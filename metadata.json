@@ -1,0 +1,7 @@
+{
+  "name": "Foretell Assistant",
+  "description": "A sports betting assistant and bookkeeping app with personalized reports and real-time match event tracking.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
