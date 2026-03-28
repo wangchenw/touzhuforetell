@@ -1,39 +1,393 @@
 @import "tailwindcss";
 
 @layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-/* 资讯页 - 情绪化动画 */
-@keyframes shimmer {
+/* ── Aurora Drift ── */
+@keyframes aurora-drift-1 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  33% { transform: translate(8%, -6%) rotate(20deg) scale(1.05); }
+  66% { transform: translate(-4%, 8%) rotate(-15deg) scale(0.97); }
+}
+@keyframes aurora-drift-2 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-8%, 6%) rotate(30deg) scale(1.06); }
+}
+@keyframes aurora-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(6%, 10%) scale(1.08); }
+  80% { transform: translate(-3%, -5%) scale(0.95); }
+}
+.aurora-1 { animation: aurora-drift-1 20s ease-in-out infinite; }
+.aurora-2 { animation: aurora-drift-2 28s ease-in-out infinite; }
+.aurora-3 { animation: aurora-drift-3 24s ease-in-out infinite; }
+
+/* ── Sparkline Glow ── */
+@keyframes point-glow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.4; }
+}
+.glow-point { animation: point-glow 2.5s ease-in-out infinite; }
+
+/* ── Existing (other pages) ── */
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+@keyframes pulse-gold { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.15); } 50% { box-shadow: 0 0 20px 4px rgba(251, 191, 36, 0.2); } }
+@keyframes gentle-breathe { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+.shimmer-sweep { animation: shimmer 3s ease-in-out infinite; }
+.pulse-gold-glow { animation: pulse-gold 2s ease-in-out infinite; }
+.breathe-soft { animation: gentle-breathe 3s ease-in-out infinite; }
+
+/* ── Noise Texture Overlay ── */
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  z-index: 1;
+}
+
+/* ── Background Beams ── */
+@keyframes beam-drift {
+  0% { transform: translateY(100%) rotate(15deg); opacity: 0; }
+  10% { opacity: 0.08; }
+  90% { opacity: 0.08; }
+  100% { transform: translateY(-120%) rotate(15deg); opacity: 0; }
+}
+@keyframes beam-drift-2 {
+  0% { transform: translateY(100%) rotate(-12deg); opacity: 0; }
+  15% { opacity: 0.06; }
+  85% { opacity: 0.06; }
+  100% { transform: translateY(-120%) rotate(-12deg); opacity: 0; }
+}
+.bg-beam-1 { animation: beam-drift 18s ease-in-out infinite; }
+.bg-beam-2 { animation: beam-drift-2 24s ease-in-out infinite 4s; }
+.bg-beam-3 { animation: beam-drift 22s ease-in-out infinite 8s; }
+
+/* ── Shimmer Border ── */
+@keyframes shimmer-border {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.shimmer-border {
+  background: linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.15) 25%, rgba(56,189,248,0.2) 50%, rgba(16,185,129,0.15) 75%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer-border 3s linear infinite;
+}
+
+/* ── Dot Matrix Overlay (for cards) ── */
+.dot-matrix {
+  background-image: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+/* ── Text Generate / Reveal character animation ── */
+@keyframes text-reveal-char {
+  0% { opacity: 0; filter: blur(8px); transform: translateY(4px); }
+  100% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
+}
+
+/* ── Glow Icon pulse ── */
+@keyframes icon-glow {
+  0%, 100% { box-shadow: 0 0 8px 2px var(--glow-color, rgba(16,185,129,0.15)); }
+  50% { box-shadow: 0 0 16px 6px var(--glow-color, rgba(16,185,129,0.25)); }
+}
+.icon-glow { animation: icon-glow 3s ease-in-out infinite; }
+
+/* ── Live Pulse (radiating red glow) ── */
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3), 0 0 8px 2px rgba(239,68,68,0.1); }
+  50% { box-shadow: 0 0 0 6px rgba(239,68,68,0), 0 0 16px 6px rgba(239,68,68,0.15); }
+}
+.live-pulse { animation: live-pulse 2s ease-in-out infinite; }
+
+/* ── Live Minute Glow ── */
+@keyframes minute-glow {
+  0%, 100% { text-shadow: 0 0 6px rgba(239,68,68,0.2); }
+  50% { text-shadow: 0 0 14px rgba(239,68,68,0.4), 0 0 28px rgba(239,68,68,0.15); }
+}
+.minute-glow { animation: minute-glow 2.5s ease-in-out infinite; }
+
+/* ── Upcoming Green Glow ── */
+@keyframes upcoming-glow {
+  0%, 100% { text-shadow: 0 0 4px rgba(16,185,129,0.15); }
+  50% { text-shadow: 0 0 10px rgba(16,185,129,0.3); }
+}
+.upcoming-glow { animation: upcoming-glow 3s ease-in-out infinite; }
+
+/* ── Monospaced Time ── */
+.mono-time {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.05em;
+}
+
+/* ── Match Progress Bar glowing tip ── */
+@keyframes progress-tip {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(239,68,68,0.4); }
+  50% { box-shadow: 0 0 10px 3px rgba(239,68,68,0.6); }
+}
+.progress-tip { animation: progress-tip 1.8s ease-in-out infinite; }
+
+/* ── Needle vibrate (Win Probability) ── */
+@keyframes needle-vibrate {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(0.5px); }
+  40% { transform: translateX(-0.3px); }
+  60% { transform: translateX(0.4px); }
+  80% { transform: translateX(-0.2px); }
+}
+.needle-vibrate { animation: needle-vibrate 2s ease-in-out infinite; }
+
+/* ── Rotating Gradient Glow (Amber/Gold for premium card) ── */
+@keyframes rotate-glow {
+  0% { filter: hue-rotate(0deg); background-position: 0% 50%; }
+  50% { filter: hue-rotate(15deg); background-position: 100% 50%; }
+  100% { filter: hue-rotate(0deg); background-position: 0% 50%; }
+}
+.rotating-glow-border {
+  background: linear-gradient(135deg, rgba(251,191,36,0.3) 0%, rgba(245,158,11,0.15) 25%, rgba(217,119,6,0.3) 50%, rgba(251,191,36,0.15) 75%, rgba(245,158,11,0.3) 100%);
+  background-size: 200% 200%;
+  animation: rotate-glow 4s ease-in-out infinite;
+}
+
+/* ── Spotlight card effect ── */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  transform: translate(var(--spot-x, -200px), var(--spot-y, -200px)) translate(-50%, -50%);
+  transition: transform 0.1s ease;
+  z-index: 1;
+}
+
+/* ── Jersey number monospace ── */
+.jersey-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.1em;
+  font-weight: 800;
+}
+
+/* ── Shiny Button (light streak) ── */
+@keyframes shiny-streak {
+  0% { left: -40%; }
+  20% { left: 120%; }
+  100% { left: 120%; }
+}
+.shiny-btn {
+  position: relative;
+  overflow: hidden;
+}
+.shiny-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -40%;
+  width: 30%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+  transform: skewX(-20deg);
+  animation: shiny-streak 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Lamp Effect (cone light from top) ── */
+@keyframes lamp-cone {
+  0%, 100% { opacity: 0.06; }
+  50% { opacity: 0.12; }
+}
+.lamp-effect {
+  position: relative;
+  overflow: hidden;
+}
+.lamp-effect::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 80px;
+  background: radial-gradient(ellipse at top, var(--lamp-color, rgba(16,185,129,0.15)) 0%, transparent 70%);
+  pointer-events: none;
+  animation: lamp-cone 3s ease-in-out infinite;
+  z-index: 0;
+}
+
+/* ── Meteor / data-flow lines ── */
+@keyframes meteor-fall {
+  0% { transform: translateY(-100%) translateX(0) rotate(215deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(400%) translateX(-60px) rotate(215deg); opacity: 0; }
+}
+.meteor {
+  position: absolute;
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, rgba(16,185,129,0.4), transparent);
+  border-radius: 999px;
+}
+
+/* ── Success sparkle particles ── */
+@keyframes sparkle-rise {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-30px) scale(0); opacity: 0; }
+}
+.sparkle-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  animation: sparkle-rise 0.8s ease-out forwards;
+}
+
+/* ── Orb breathing ── */
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+.orb-breathe { animation: orb-breathe 4s ease-in-out infinite; }
+
+/* ── Scan Laser Line ── */
+@keyframes scan-laser {
+  0%, 100% { top: 20%; opacity: 0.5; }
+  50% { top: 75%; opacity: 0.8; }
+}
+.scan-laser {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.6) 30%, rgba(16,185,129,0.9) 50%, rgba(16,185,129,0.6) 70%, transparent 100%);
+  box-shadow: 0 0 8px 2px rgba(16,185,129,0.3);
+  animation: scan-laser 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Beam divider (horizontal light pulse) ── */
+@keyframes beam-pulse-h {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.beam-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.08) 20%, rgba(16,185,129,0.25) 50%, rgba(16,185,129,0.08) 80%, transparent 100%);
+  background-size: 200% 100%;
+  animation: beam-pulse-h 4s linear infinite;
+}
+
+/* ── Fluid color fill (sport selector) ── */
+@keyframes fluid-fill {
+  0% { clip-path: inset(100% 0 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+.fluid-fill-active {
+  animation: fluid-fill 0.5s ease-out forwards;
+}
+
+/* ── Focus glow underline ── */
+@keyframes focus-glow-line {
+  0%, 100% { box-shadow: 0 1px 4px rgba(16,185,129,0.15); }
+  50% { box-shadow: 0 1px 10px rgba(16,185,129,0.3); }
+}
+.focus-glow { animation: focus-glow-line 2s ease-in-out infinite; }
+
+/* ── Check pulse ── */
+@keyframes check-pulse {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(16,185,129,0.2)); }
+  50% { filter: drop-shadow(0 0 8px rgba(16,185,129,0.5)); }
+}
+.check-pulse { animation: check-pulse 2s ease-in-out infinite; }
+
+/* ── Pitch field pattern ── */
+.pitch-field {
+  background: linear-gradient(180deg,
+    rgba(16,185,129,0.03) 0%,
+    rgba(16,185,129,0.05) 25%,
+    rgba(16,185,129,0.03) 50%,
+    rgba(16,185,129,0.05) 75%,
+    rgba(16,185,129,0.03) 100%
+  );
+}
+
+/* ── Follower pointer glow ── */
+.follower-glow {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: left 0.15s ease, top 0.15s ease;
+  z-index: 1;
+}
+
+/* ── Liquid shimmer overlay for probability bar ── */
+@keyframes liquid-shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
 }
-
-@keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.15); }
-  50% { box-shadow: 0 0 20px 4px rgba(251, 191, 36, 0.2); }
+.liquid-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.08) 30%,
+    rgba(255,255,255,0.15) 50%,
+    rgba(255,255,255,0.08) 70%,
+    transparent 100%
+  );
+  width: 50%;
+  height: 100%;
+  animation: liquid-shimmer 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
-@keyframes gentle-breathe {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
+/* ── Dot matrix blueprint overlay ── */
+.dot-matrix {
+  background-image: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
 
-.shimmer-sweep {
-  animation: shimmer 3s ease-in-out infinite;
+/* ── Tracing beam line glow ── */
+.tracing-beam-line {
+  box-shadow: 0 0 6px rgba(16,185,129,0.15), 0 0 2px rgba(16,185,129,0.3);
 }
 
-.pulse-gold-glow {
-  animation: pulse-gold 2s ease-in-out infinite;
+/* ── Hover border gradient for timeline cards ── */
+@keyframes border-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
-
-.breathe-soft {
-  animation: gentle-breathe 3s ease-in-out infinite;
+.hover-border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    rgba(16,185,129,0.3) 25%,
+    rgba(56,189,248,0.3) 50%,
+    rgba(16,185,129,0.15) 75%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-rotate 4s linear infinite;
 }

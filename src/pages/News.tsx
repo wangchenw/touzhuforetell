@@ -99,7 +99,8 @@ export default function News() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white shadow-lg mb-3 relative overflow-hidden"
+            onClick={() => navigate(`/news/${filtered[0].id}`, { state: filtered[0] })}
+            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white shadow-lg mb-3 relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mt-10 -mr-10" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/10 rounded-full blur-xl -mb-8 -ml-8" />
@@ -125,7 +126,8 @@ export default function News() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.04 }}
             key={item.id}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100/50 active:bg-gray-50 transition-colors"
+            onClick={() => navigate(`/news/${item.id}`, { state: item })}
+            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100/50 active:bg-gray-50 transition-colors cursor-pointer active:scale-[0.98]"
           >
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">

@@ -6,6 +6,8 @@ import Profile from './pages/Profile';
 import AddBet from './pages/AddBet';
 import Schedule from './pages/Schedule';
 import News from './pages/News';
+import MatchDetail from './pages/MatchDetail';
+import NewsDetail from './pages/NewsDetail';
 
 export default function App() {
   return (
@@ -21,6 +23,8 @@ export default function App() {
               <Route path="profile" element={<Profile />} />
             </Route>
             <Route path="/add-bet" element={<AddBet />} />
+            <Route path="/match/:id" element={<MatchDetail />} />
+            <Route path="/news/:id" element={<NewsDetail />} />
           </Routes>
         </BrowserRouter>
       </div>

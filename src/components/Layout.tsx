@@ -8,30 +8,42 @@ export default function Layout() {
       <main className="flex-1 overflow-hidden relative flex flex-col">
         <Outlet />
       </main>
-      
-      <nav className="relative w-full bg-white/90 backdrop-blur-xl border-t border-gray-100/50 flex justify-around items-center h-[68px] px-2 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] shrink-0">
+
+      <nav className="relative w-full bg-white/80 backdrop-blur-2xl border-t border-[#E5E5EA]/40 flex justify-around items-center h-[72px] px-4 z-50 shrink-0">
         {[
           { to: '/', icon: Aperture, label: 'Foretell' },
           { to: '/schedule', icon: Trophy, label: '赛程' },
           { to: '/news', icon: MessageCircle, label: '资讯' },
-          { to: '/bookkeeping', icon: Wallet, label: '投注' }
+          { to: '/bookkeeping', icon: Wallet, label: '投注' },
         ].map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center justify-center w-16 h-full space-y-1 transition-all duration-300 relative",
-                isActive ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
+                "flex flex-col items-center justify-center w-16 h-full gap-[5px] transition-all duration-500 relative",
+                isActive ? "text-emerald-600" : "text-[#AEAEB2]"
               )
             }
           >
             {({ isActive }) => (
               <>
-                <div className={cn("relative p-1 rounded-xl transition-all duration-300", isActive && "bg-blue-50")}>
-                  <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                <div className="relative p-1.5">
+                  {isActive && (
+                    <div className="absolute inset-[-6px] bg-emerald-400/[0.07] rounded-2xl blur-[8px] pointer-events-none" />
+                  )}
+                  <item.icon
+                    size={22}
+                    strokeWidth={isActive ? 2 : 1.5}
+                    className="relative z-10 transition-all duration-500"
+                  />
                 </div>
-                <span className={cn("text-[10px] transition-all duration-300", isActive ? "font-semibold" : "font-medium")}>
+                <span
+                  className={cn(
+                    "text-[10px] tracking-[0.03em] transition-all duration-500",
+                    isActive ? "font-semibold" : "font-normal"
+                  )}
+                >
                   {item.label}
                 </span>
               </>

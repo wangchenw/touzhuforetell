@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
-import { Plus, Settings, Filter, Trophy, CheckCircle2, XCircle, Timer, TrendingUp, Activity } from 'lucide-react';
+import { Plus, Settings, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 
 type SportFilter = 'all' | 'football' | 'basketball';
 type StatusFilter = 'all' | 'won' | 'lost' | 'pending';
@@ -21,22 +21,36 @@ interface BetRecord {
   time: string;
 }
 
-// ── Interactive Sparkline with touch/mouse drag ──
-function ProfitSparkline({ data, height = 130 }: { data: { date: string; value: number }[]; height?: number }) {
+// ── Text Reveal Animation ──
+function TextReveal({ text, className }: { text: string; className?: string }) {
+  return (
+    <motion.span
+      className={cn('inline-block', className)}
+      initial={{ opacity: 0, filter: 'blur(10px)', y: 8 }}
+      animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+      transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
+      {text}
+    </motion.span>
+  );
+}
+
+// ── Fluid Sparkline with touch/mouse drag ──
+function FluidSparkline({ data, height = 120 }: { data: { date: string; value: number }[]; height?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   if (data.length < 2) return null;
 
-  const width = 320; // SVG viewBox width, scales responsively
+  const width = 320;
   const values = data.map(d => d.value);
   const minV = Math.min(...values, 0);
   const maxV = Math.max(...values);
   const range = maxV - minV || 1;
-  const padTop = 30;
-  const padBottom = 22;
-  const padX = 12;
+  const padTop = 24;
+  const padBottom = 24;
+  const padX = 16;
   const innerW = width - padX * 2;
   const innerH = height - padTop - padBottom;
 
@@ -45,7 +59,6 @@ function ProfitSparkline({ data, height = 130 }: { data: { date: string; value: 
     y: padTop + innerH - ((d.value - minV) / range) * innerH,
   }));
 
-  // Smooth curve
   const pathD = points.reduce((acc, p, i) => {
     if (i === 0) return `M ${p.x},${p.y}`;
     const prev = points[i - 1];
@@ -54,16 +67,15 @@ function ProfitSparkline({ data, height = 130 }: { data: { date: string; value: 
   }, '');
 
   const areaD = pathD + ` L ${points[points.length - 1].x},${height - padBottom} L ${points[0].x},${height - padBottom} Z`;
-  const zeroY = padTop + innerH - ((0 - minV) / range) * innerH;
+  const lastPoint = points[points.length - 1];
   const lastValue = data[data.length - 1].value;
   const lineColor = lastValue >= 0 ? '#10b981' : '#ef4444';
 
-  // Resolve which data index the pointer is closest to
   const resolveIndex = useCallback((clientX: number) => {
     const el = containerRef.current;
     if (!el) return null;
     const rect = el.getBoundingClientRect();
-    const relX = (clientX - rect.left) / rect.width; // 0..1
+    const relX = (clientX - rect.left) / rect.width;
     const idx = Math.round(relX * (data.length - 1));
     return Math.max(0, Math.min(data.length - 1, idx));
   }, [data.length]);
@@ -79,7 +91,6 @@ function ProfitSparkline({ data, height = 130 }: { data: { date: string; value: 
   };
   const handlePointerUp = () => {
     setIsDragging(false);
-    // Keep the selected point visible for a moment, then hide
     setTimeout(() => { if (!isDragging) setActiveIdx(null); }, 1500);
   };
   const handlePointerLeave = () => {
@@ -101,111 +112,111 @@ function ProfitSparkline({ data, height = 130 }: { data: { date: string; value: 
     >
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height }}>
         <defs>
-          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+          <linearGradient id="sparkGradPremium" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.08" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
           </linearGradient>
+          <filter id="sparkGlow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
-        {/* Horizontal grid lines */}
+        {/* Subtle horizontal guides */}
         {[0.25, 0.5, 0.75].map(pct => {
           const gy = padTop + innerH * (1 - pct);
-          return <line key={pct} x1={padX} y1={gy} x2={width - padX} y2={gy} stroke="#f3f4f6" strokeWidth="0.8" />;
+          return <line key={pct} x1={padX} y1={gy} x2={width - padX} y2={gy} stroke="#e5e7eb" strokeWidth="0.4" strokeOpacity="0.5" />;
         })}
 
-        {/* Zero baseline */}
-        <line x1={padX} y1={zeroY} x2={width - padX} y2={zeroY} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4 3" />
-        <text x={padX - 1} y={zeroY - 4} fill="#d1d5db" fontSize="8" fontWeight="500">0</text>
+        {/* Area fill — very subtle */}
+        <motion.path
+          d={areaD}
+          fill="url(#sparkGradPremium)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2, delay: 0.4 }}
+        />
 
-        {/* Area fill */}
-        <path d={areaD} fill="url(#sparkGrad)" />
+        {/* Glow behind the curve */}
+        <motion.path
+          d={pathD}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.1"
+          filter="url(#sparkGlow)"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.6, ease: 'easeInOut' }}
+        />
 
-        {/* Curve line */}
-        <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Main curve — animated draw */}
+        <motion.path
+          d={pathD}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 1.5, ease: 'easeInOut' }}
+        />
 
-        {/* Static dots */}
-        {points.map((p, i) => (
-          <circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={activeIdx === i ? 0 : (i === points.length - 1 ? 3.5 : 2)}
-            fill={lineColor}
-            opacity={i === points.length - 1 ? 1 : 0.35}
-          />
-        ))}
-
-        {/* Date labels along bottom */}
+        {/* Date labels */}
         {data.map((d, i) => (
           <text
             key={i}
             x={points[i].x}
             y={height - 4}
             textAnchor="middle"
-            fill={activeIdx === i ? '#111827' : '#d1d5db'}
+            fill={activeIdx === i ? '#374151' : '#d1d5db'}
             fontSize="8"
-            fontWeight={activeIdx === i ? '700' : '400'}
-            fontFamily="sans-serif"
+            fontWeight={activeIdx === i ? '600' : '400'}
+            letterSpacing="0.02em"
           >
             {d.date}
           </text>
         ))}
 
-        {/* ── Active crosshair + tooltip ── */}
+        {/* Glowing endpoint — pulsing */}
+        {activeIdx === null && (
+          <>
+            <circle cx={lastPoint.x} cy={lastPoint.y} r="10" fill={lineColor} opacity="0.08" className="glow-point" />
+            <circle cx={lastPoint.x} cy={lastPoint.y} r="4" fill="white" stroke={lineColor} strokeWidth="1.5" />
+          </>
+        )}
+
+        {/* Active crosshair + tooltip */}
         {activePoint && activeData && (
           <>
-            {/* Vertical crosshair line */}
             <line
-              x1={activePoint.x}
-              y1={padTop - 4}
-              x2={activePoint.x}
-              y2={height - padBottom}
-              stroke={lineColor}
-              strokeWidth="1"
-              strokeDasharray="3 2"
-              opacity="0.5"
+              x1={activePoint.x} y1={padTop}
+              x2={activePoint.x} y2={height - padBottom}
+              stroke={lineColor} strokeWidth="0.8" strokeDasharray="3 3" opacity="0.25"
             />
-            {/* Horizontal crosshair line */}
-            <line
-              x1={padX}
-              y1={activePoint.y}
-              x2={width - padX}
-              y2={activePoint.y}
-              stroke={lineColor}
-              strokeWidth="0.8"
-              strokeDasharray="3 2"
-              opacity="0.3"
-            />
-            {/* Outer glow ring */}
-            <circle cx={activePoint.x} cy={activePoint.y} r="10" fill={lineColor} opacity="0.12" />
-            {/* Active dot */}
-            <circle cx={activePoint.x} cy={activePoint.y} r="5" fill="white" stroke={lineColor} strokeWidth="2.5" />
-            {/* Tooltip bubble */}
+            <circle cx={activePoint.x} cy={activePoint.y} r="12" fill={lineColor} opacity="0.06" />
+            <circle cx={activePoint.x} cy={activePoint.y} r="5" fill="white" stroke={lineColor} strokeWidth="1.5" />
             {(() => {
-              const tooltipW = 80;
-              const tooltipH = 36;
-              // Flip tooltip direction if near edge
+              const tooltipW = 68;
+              const tooltipH = 30;
               let tx = activePoint.x - tooltipW / 2;
               if (tx < 4) tx = 4;
               if (tx + tooltipW > width - 4) tx = width - 4 - tooltipW;
-              const ty = activePoint.y - tooltipH - 14;
+              const ty = activePoint.y - tooltipH - 16;
               const tyFinal = ty < 2 ? activePoint.y + 16 : ty;
-
               return (
                 <>
-                  <rect x={tx} y={tyFinal} width={tooltipW} height={tooltipH} rx="10" fill="#111827" opacity="0.92" />
-                  {/* Small arrow */}
-                  {ty >= 2 && (
-                    <polygon
-                      points={`${activePoint.x - 4},${tyFinal + tooltipH} ${activePoint.x + 4},${tyFinal + tooltipH} ${activePoint.x},${tyFinal + tooltipH + 5}`}
-                      fill="#111827"
-                      opacity="0.92"
-                    />
-                  )}
-                  <text x={tx + tooltipW / 2} y={tyFinal + 14} textAnchor="middle" fill="#9ca3af" fontSize="8" fontWeight="500">
+                  <rect x={tx} y={tyFinal} width={tooltipW} height={tooltipH} rx="10" fill="rgba(17,24,39,0.82)" />
+                  <text x={tx + tooltipW / 2} y={tyFinal + 12} textAnchor="middle" fill="#9ca3af" fontSize="7" fontWeight="500">
                     {activeData.date}
                   </text>
-                  <text x={tx + tooltipW / 2} y={tyFinal + 28} textAnchor="middle" fill="white" fontSize="13" fontWeight="800">
+                  <text x={tx + tooltipW / 2} y={tyFinal + 24} textAnchor="middle" fill="white" fontSize="11" fontWeight="700" letterSpacing="0.02em">
                     {activeData.value >= 0 ? '+' : ''}{activeData.value}
                   </text>
                 </>
@@ -213,103 +224,67 @@ function ProfitSparkline({ data, height = 130 }: { data: { date: string; value: 
             })()}
           </>
         )}
-
-        {/* Default end-point label when not dragging */}
-        {activeIdx === null && (() => {
-          const lp = points[points.length - 1];
-          const lv = data[data.length - 1].value;
-          let rx = lp.x - 24;
-          if (rx + 52 > width - 4) rx = width - 56;
-          return (
-            <>
-              <rect x={rx} y={lp.y - 22} width="52" height="18" rx="9" fill={lineColor} />
-              <text x={rx + 26} y={lp.y - 10} textAnchor="middle" fill="white" fontSize="10" fontWeight="700">
-                {lv >= 0 ? '+' : ''}{lv}
-              </text>
-            </>
-          );
-        })()}
       </svg>
 
-      {/* Drag hint */}
       {!isDragging && activeIdx === null && (
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
-          <span className="text-[10px] text-gray-300 font-medium flex items-center gap-1">
-            ← 拖动查看详情 →
-          </span>
+        <div className="absolute bottom-7 left-0 right-0 flex justify-center pointer-events-none">
+          <span className="text-[9px] text-gray-300/50 font-medium tracking-widest">← 拖动查看 →</span>
         </div>
       )}
     </div>
   );
 }
 
-// ── Win Rate Ring (胜率环形图) ──
-function WinRateRing({ winRate, size = 68 }: { winRate: number; size?: number }) {
-  const r = (size - 10) / 2;
+// ── Minimalist Donut (2px stroke, precise) ──
+function MinimalistDonut({ winRate, size = 80 }: { winRate: number; size?: number }) {
+  const r = (size - 6) / 2;
   const circ = 2 * Math.PI * r;
   const filled = (winRate / 100) * circ;
   const center = size / 2;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={center} cy={center} r={r} fill="none" stroke="#f3f4f6" strokeWidth="6" />
-      <circle
+      <circle cx={center} cy={center} r={r} fill="none" stroke="#f3f4f6" strokeWidth="2" />
+      <motion.circle
         cx={center} cy={center} r={r} fill="none"
-        stroke="#10b981" strokeWidth="6" strokeLinecap="round"
+        stroke="#10b981" strokeWidth="2" strokeLinecap="round"
         strokeDasharray={`${filled} ${circ - filled}`}
         strokeDashoffset={circ * 0.25}
-        style={{ transition: 'stroke-dasharray 0.8s ease' }}
+        initial={{ strokeDasharray: `0 ${circ}` }}
+        animate={{ strokeDasharray: `${filled} ${circ - filled}` }}
+        transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
       />
-      <text x={center} y={center - 4} textAnchor="middle" fill="#111827" fontSize="15" fontWeight="800">{winRate}%</text>
-      <text x={center} y={center + 10} textAnchor="middle" fill="#9ca3af" fontSize="8" fontWeight="500">胜率</text>
+      <text x={center} y={center - 1} textAnchor="middle" fill="#111827" fontSize="16" fontWeight="700" letterSpacing="-0.03em">
+        {winRate}%
+      </text>
+      <text x={center} y={center + 13} textAnchor="middle" fill="#c9cdd4" fontSize="8" fontWeight="500" letterSpacing="0.08em">
+        胜率
+      </text>
     </svg>
   );
 }
 
-// ── Sport Distribution Bars (运动分布) ──
-function SportBars({ football, basketball }: { football: number; basketball: number }) {
-  const total = football + basketball || 1;
-  const fPct = Math.round((football / total) * 100);
-  const bPct = 100 - fPct;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-gray-500 w-8 shrink-0">⚽</span>
-        <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden relative">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${fPct}%` }}
-            transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full"
-          />
-        </div>
-        <span className="text-[11px] text-gray-700 font-bold w-8 text-right">{football}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-gray-500 w-8 shrink-0">🏀</span>
-        <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden relative">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${bPct}%` }}
-            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.1 }}
-            className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full"
-          />
-        </div>
-        <span className="text-[11px] text-gray-700 font-bold w-8 text-right">{basketball}</span>
-      </div>
-    </div>
-  );
+// ── Stats helper ──
+function computeStats(records: BetRecord[]) {
+  const totalProfit = records.reduce((sum, r) => {
+    if (r.status === 'won') return sum + (r.prize - r.amount);
+    if (r.status === 'lost') return sum - r.amount;
+    return sum;
+  }, 0);
+  const wonCount = records.filter(r => r.status === 'won').length;
+  const settledCount = records.filter(r => r.status !== 'pending').length;
+  const winRate = settledCount > 0 ? Math.round((wonCount / settledCount) * 100) : 0;
+  const pendingAmount = records.filter(r => r.status === 'pending').reduce((s, r) => s + r.amount, 0);
+  return { totalProfit, wonCount, settledCount, winRate, pendingAmount, total: records.length };
 }
 
 // ── Main Page ──
 export default function Bookkeeping() {
   const navigate = useNavigate();
-  const [sportFilter, setSportFilter] = useState<SportFilter>('all');
+  const [sportTab, setSportTab] = useState<SportFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [showFilters, setShowFilters] = useState(false);
 
-  const records: BetRecord[] = [
+  const allRecords: BetRecord[] = [
     { id: 1, sport: 'football', league: '英超', match: '曼联 vs 阿森纳', play: '胜平负 - 主胜', odds: 2.10, amount: 500, status: 'won', prize: 1050, date: '03-28', time: '20:00' },
     { id: 2, sport: 'basketball', league: 'NBA', match: '湖人 vs 勇士', play: '让分 - 湖人+5.5', odds: 1.85, amount: 300, status: 'lost', prize: 0, date: '03-27', time: '10:30' },
     { id: 3, sport: 'football', league: '西甲', match: '皇马 vs 巴萨', play: '比分 - 2:1', odds: 8.50, amount: 100, status: 'pending', prize: 0, date: '03-29', time: '03:00' },
@@ -320,33 +295,19 @@ export default function Bookkeeping() {
     { id: 8, sport: 'football', league: '英超', match: '利物浦 vs 切尔西', play: '半全场 - 主/主', odds: 3.20, amount: 150, status: 'lost', prize: 0, date: '03-24', time: '23:30' },
   ];
 
-  // ── Computed Stats ──
-  const filtered = records
-    .filter(r => sportFilter === 'all' || r.sport === sportFilter)
-    .filter(r => statusFilter === 'all' || r.status === statusFilter);
+  const sportRecords = sportTab === 'all' ? allRecords : allRecords.filter(r => r.sport === sportTab);
+  const stats = computeStats(sportRecords);
+  const filtered = sportRecords.filter(r => statusFilter === 'all' || r.status === statusFilter);
 
-  const totalProfit = records.reduce((sum, r) => {
-    if (r.status === 'won') return sum + (r.prize - r.amount);
-    if (r.status === 'lost') return sum - r.amount;
-    return sum;
-  }, 0);
+  const footballCount = allRecords.filter(r => r.sport === 'football').length;
+  const basketballCount = allRecords.filter(r => r.sport === 'basketball').length;
 
-  const wonCount = records.filter(r => r.status === 'won').length;
-  const settledCount = records.filter(r => r.status !== 'pending').length;
-  const winRate = settledCount > 0 ? Math.round((wonCount / settledCount) * 100) : 0;
-  const pendingAmount = records.filter(r => r.status === 'pending').reduce((s, r) => s + r.amount, 0);
-
-  const footballCount = records.filter(r => r.sport === 'football').length;
-  const basketballCount = records.filter(r => r.sport === 'basketball').length;
-
-  // ── Profit Curve Data (cumulative by date) ──
   const profitCurve = (() => {
-    const settled = records
+    const settled = sportRecords
       .filter(r => r.status !== 'pending')
       .sort((a, b) => a.date.localeCompare(b.date));
     let cum = 0;
     const map = new Map<string, number>();
-    // seed a starting zero point
     map.set('03-22', 0);
     map.set('03-23', 120);
     for (const r of settled) {
@@ -358,258 +319,292 @@ export default function Bookkeeping() {
     return Array.from(map.entries()).map(([date, value]) => ({ date, value }));
   })();
 
-  const statusIcon = (status: string) => {
-    if (status === 'won') return <CheckCircle2 size={14} className="text-emerald-500" />;
-    if (status === 'lost') return <XCircle size={14} className="text-gray-400" />;
-    return <Timer size={14} className="text-amber-500" />;
-  };
-
-  const statusLabel = (status: string) => {
-    if (status === 'won') return '已中';
-    if (status === 'lost') return '未中';
-    return '待开';
-  };
+  const profitText = `${stats.totalProfit >= 0 ? '+' : ''}${stats.totalProfit.toFixed(0)}`;
 
   return (
-    <div className="flex flex-col h-full bg-[#F7F8FA] relative">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md px-5 py-3 flex justify-between items-center sticky top-0 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)] shrink-0">
-        <h1 className="text-xl font-bold text-gray-900">我的投注</h1>
-        <button onClick={() => navigate('/profile')} className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
-          <Settings size={20} />
+    <div className="flex flex-col h-full relative overflow-hidden bg-[#FAFBFC]">
+
+      {/* ═══ Aurora Background ═══ */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="aurora-1 absolute -top-20 -left-20 w-72 h-72 rounded-full bg-gradient-to-br from-emerald-200/30 via-teal-100/20 to-transparent blur-3xl" />
+        <div className="aurora-2 absolute top-40 -right-16 w-64 h-64 rounded-full bg-gradient-to-bl from-blue-200/20 via-indigo-100/15 to-transparent blur-3xl" />
+        <div className="aurora-3 absolute bottom-20 left-10 w-56 h-56 rounded-full bg-gradient-to-tr from-purple-200/15 via-pink-100/10 to-transparent blur-3xl" />
+      </div>
+
+      {/* ═══ Header ═══ */}
+      <header className="relative z-10 px-6 pt-4 pb-2 flex justify-between items-center shrink-0">
+        <h1 className="text-[22px] font-bold text-gray-900 tracking-tight">投注</h1>
+        <button
+          onClick={() => navigate('/profile')}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/60 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
+        >
+          <Settings size={17} strokeWidth={1.8} />
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-24">
-
-        {/* ═══════ Stats Hero Card ═══════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-5 text-white shadow-lg shadow-emerald-200/40"
-        >
-          <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/10 rounded-full blur-2xl" />
-          <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-teal-900/15 rounded-full blur-xl" />
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[13px] font-medium opacity-90 flex items-center gap-1.5">
-                <Activity size={14} />
-                累计盈亏
-              </span>
-              <span className="text-[11px] bg-white/20 px-2.5 py-0.5 rounded-full">本月</span>
-            </div>
-            <div className="text-[36px] font-black tracking-tight leading-tight">
-              {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(0)}
-              <span className="text-[14px] font-medium opacity-70 ml-1">元</span>
-            </div>
-            <div className="flex justify-between items-center bg-black/10 rounded-2xl p-3 mt-4 backdrop-blur-sm">
-              <div className="flex-1 text-center">
-                <div className="text-[10px] opacity-70 mb-0.5">胜率</div>
-                <div className="font-bold text-[16px]">{winRate}%</div>
-              </div>
-              <div className="w-px h-7 bg-white/20" />
-              <div className="flex-1 text-center">
-                <div className="text-[10px] opacity-70 mb-0.5">总单数</div>
-                <div className="font-bold text-[16px]">{records.length}单</div>
-              </div>
-              <div className="w-px h-7 bg-white/20" />
-              <div className="flex-1 text-center">
-                <div className="text-[10px] opacity-70 mb-0.5">待开奖</div>
-                <div className="font-bold text-[16px]">{pendingAmount}</div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ═══════ Profit Trend Chart ═══════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100/50"
-        >
-          <div className="flex items-center justify-between mb-2 px-0.5">
-            <h3 className="text-[13px] font-bold text-gray-800 flex items-center gap-1.5">
-              <TrendingUp size={14} className="text-emerald-500" />
-              盈亏走势
-            </h3>
-            <span className="text-[10px] text-gray-400 font-medium">近7日</span>
-          </div>
-          <ProfitSparkline data={profitCurve} height={140} />
-        </motion.div>
-
-        {/* ═══════ Win Rate + Sport Distribution ═══════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14 }}
-          className="grid grid-cols-2 gap-3"
-        >
-          {/* Win Rate Ring */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100/50 flex flex-col items-center justify-center">
-            <WinRateRing winRate={winRate} size={72} />
-            <div className="flex items-center gap-3 mt-3">
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] text-gray-500">{wonCount}胜</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-gray-300" />
-                <span className="text-[10px] text-gray-500">{settledCount - wonCount}负</span>
-              </div>
-            </div>
-          </div>
-          {/* Sport Distribution */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100/50 flex flex-col justify-center">
-            <h3 className="text-[11px] font-semibold text-gray-500 mb-3">投注分布</h3>
-            <SportBars football={footballCount} basketball={basketballCount} />
-            <div className="text-[10px] text-gray-400 mt-2.5 text-center">共 {records.length} 注</div>
-          </div>
-        </motion.div>
-
-        {/* ═══════ Filter Bar ═══════ */}
-        <div className="flex items-center justify-between">
-          <div className="flex bg-gray-200/50 p-1 rounded-xl flex-1 mr-3">
-            {(['all', 'football', 'basketball'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setSportFilter(tab)}
-                className={cn(
-                  "flex-1 py-1.5 text-[13px] font-medium rounded-lg transition-all duration-300",
-                  sportFilter === tab
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500"
-                )}
-              >
-                {tab === 'all' ? '全部' : tab === 'football' ? '足球' : '篮球'}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "flex items-center gap-1 px-3 py-1.5 rounded-xl text-[13px] font-medium border transition-all",
-              showFilters ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200"
-            )}
-          >
-            <Filter size={14} />
-            筛选
-          </button>
-        </div>
-
-        {/* Status Filter (collapsible) */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
+      {/* ═══ Sport Tabs — minimal capsules ═══ */}
+      <div className="relative z-10 px-6 pt-1 pb-3 shrink-0">
+        <div className="flex gap-1.5">
+          {([
+            { key: 'all' as const, label: '全部' },
+            { key: 'football' as const, label: '足球' },
+            { key: 'basketball' as const, label: '篮球' },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setSportTab(tab.key); setStatusFilter('all'); }}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-[13px] font-medium transition-all duration-400 border",
+                sportTab === tab.key
+                  ? "bg-white/70 backdrop-blur-xl border-white/40 text-gray-900 shadow-sm shadow-gray-200/30"
+                  : "bg-transparent border-transparent text-gray-400 hover:text-gray-600"
+              )}
             >
-              <div className="flex gap-2 pb-1">
-                {([
-                  { key: 'all', label: '全部状态' },
-                  { key: 'won', label: '已中奖' },
-                  { key: 'lost', label: '未中奖' },
-                  { key: 'pending', label: '待开奖' },
-                ] as const).map(s => (
-                  <button
-                    key={s.key}
-                    onClick={() => setStatusFilter(s.key)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all",
-                      statusFilter === s.key
-                        ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                        : "bg-white border-gray-200 text-gray-500"
-                    )}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Records Header */}
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[13px] font-bold text-gray-800">投注记录</span>
-          <span className="text-[11px] text-gray-400">共 {filtered.length} 条 · 按时间倒序</span>
-        </div>
-
-        {/* ═══════ Bet Records List ═══════ */}
-        <div className="space-y-2.5">
-          {filtered.map((record, idx) => (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.04 }}
-              key={record.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden"
-            >
-              {/* Top Row */}
-              <div className="flex items-center justify-between px-4 pt-3 pb-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-                    {record.sport === 'football' ? '⚽' : '🏀'} {record.league}
-                  </span>
-                  <span className="text-[11px] text-gray-400">{record.date} {record.time}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {statusIcon(record.status)}
-                  <span className={cn(
-                    "text-[11px] font-semibold",
-                    record.status === 'won' ? "text-emerald-600" : record.status === 'lost' ? "text-gray-400" : "text-amber-500"
-                  )}>
-                    {statusLabel(record.status)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Match + Play */}
-              <div className="px-4 py-2">
-                <div className="font-bold text-[15px] text-gray-900">{record.match}</div>
-                <div className="text-[13px] text-gray-500 mt-0.5">{record.play} · 赔率 {record.odds.toFixed(2)}</div>
-              </div>
-
-              {/* Bottom Row */}
-              <div className={cn(
-                "flex items-center justify-between px-4 py-2.5 border-t",
-                record.status === 'won' ? "bg-emerald-50/50 border-emerald-100/50" :
-                record.status === 'lost' ? "bg-gray-50/50 border-gray-100/50" :
-                "bg-amber-50/30 border-amber-100/30"
-              )}>
-                <span className="text-[13px] text-gray-500">投入 <span className="font-semibold text-gray-700">{record.amount}</span></span>
-                <span className={cn(
-                  "text-[15px] font-bold",
-                  record.status === 'won' ? "text-emerald-600" : record.status === 'lost' ? "text-gray-400" : "text-amber-500"
-                )}>
-                  {record.status === 'won' ? `+${(record.prize - record.amount).toFixed(0)}` :
-                   record.status === 'lost' ? `-${record.amount}` :
-                   `待开 ${(record.amount * record.odds).toFixed(0)}`}
-                </span>
-              </div>
-            </motion.div>
+              {tab.label}
+            </button>
           ))}
-
-          {filtered.length === 0 && (
-            <div className="text-center py-16 text-gray-400">
-              <Trophy size={40} className="mx-auto mb-3 opacity-30" />
-              <div className="text-[15px] font-medium">暂无符合条件的投注记录</div>
-              <div className="text-[13px] mt-1">试试调整筛选条件</div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* FAB */}
+      {/* ═══ Scrollable Content ═══ */}
+      <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 pb-28">
+        <div className="px-5 space-y-5">
+
+          {/* ═══ Main Profit Card — Frosted Glass ═══ */}
+          <motion.div
+            key={sportTab + '-hero'}
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="relative rounded-3xl bg-white/60 backdrop-blur-2xl border border-white/30 shadow-[0_8px_40px_rgba(0,0,0,0.04)] p-6 overflow-hidden"
+          >
+            {/* Radiant border glow */}
+            <div className="absolute inset-0 rounded-3xl border border-emerald-500/[0.06] pointer-events-none" />
+            {/* Subtle green aura behind the number */}
+            {stats.totalProfit >= 0 && (
+              <div className="absolute top-8 left-4 w-36 h-20 bg-emerald-400/[0.05] blur-3xl rounded-full pointer-events-none" />
+            )}
+
+            <div className="relative z-10">
+              <div className="flex items-start justify-between mb-1">
+                <span className="text-[11px] font-medium text-gray-400 tracking-widest uppercase">
+                  {sportTab === 'all' ? '累计盈亏' : sportTab === 'football' ? '足球盈亏' : '篮球盈亏'}
+                </span>
+                <span className="text-[10px] text-gray-300 font-medium tracking-wide">本月</span>
+              </div>
+
+              {/* Massive profit number — text reveal */}
+              <div className="mt-3 mb-8">
+                <TextReveal
+                  key={sportTab + '-profit'}
+                  text={profitText}
+                  className="text-[48px] font-black tracking-tighter leading-none text-gray-900"
+                />
+                <span className="text-[13px] font-normal text-gray-300 ml-1.5 tracking-wide">元</span>
+              </div>
+
+              {/* Stats row — thin dividers, wide spacing */}
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <div className="text-[10px] text-gray-300 font-medium tracking-widest mb-1">胜率</div>
+                  <div className="text-[18px] font-bold text-gray-800 tracking-tight">
+                    {stats.winRate}<span className="text-[11px] text-gray-300 ml-0.5">%</span>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-gray-200/40" />
+                <div className="flex-1 pl-5">
+                  <div className="text-[10px] text-gray-300 font-medium tracking-widest mb-1">总投注</div>
+                  <div className="text-[18px] font-bold text-gray-800 tracking-tight">
+                    {stats.total}<span className="text-[11px] text-gray-300 ml-0.5">单</span>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-gray-200/40" />
+                <div className="flex-1 pl-5">
+                  <div className="text-[10px] text-gray-300 font-medium tracking-widest mb-1">待开奖</div>
+                  <div className="text-[18px] font-bold text-gray-800 tracking-tight">
+                    {stats.pendingAmount}<span className="text-[11px] text-gray-300 ml-0.5">元</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ═══ Sparkline Card — Frosted Glass ═══ */}
+          <motion.div
+            key={sportTab + '-chart'}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="rounded-3xl bg-white/60 backdrop-blur-2xl border border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[12px] font-semibold text-gray-500 tracking-wide flex items-center gap-1.5">
+                <TrendingUp size={13} className="text-emerald-500/70" />
+                盈亏走势
+              </span>
+              <span className="text-[10px] text-gray-300 font-medium tracking-wide">近7日</span>
+            </div>
+            <FluidSparkline data={profitCurve} height={120} />
+          </motion.div>
+
+          {/* ═══ Win Rate + Distribution — Two frosted cards ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: 0.5 }}
+            className="grid grid-cols-2 gap-3"
+          >
+            {/* Donut — minimal 2px ring */}
+            <div className="rounded-3xl bg-white/60 backdrop-blur-2xl border border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 flex flex-col items-center justify-center">
+              <MinimalistDonut winRate={stats.winRate} size={80} />
+              <div className="flex items-center gap-3 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] text-gray-400">{stats.wonCount}胜</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
+                  <span className="text-[10px] text-gray-400">{stats.settledCount - stats.wonCount}负</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Distribution — thin bars */}
+            <div className="rounded-3xl bg-white/60 backdrop-blur-2xl border border-white/30 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 flex flex-col justify-center">
+              <span className="text-[10px] text-gray-300 font-medium tracking-widest mb-4">投注分布</span>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-[11px] text-gray-500 font-medium">足球</span>
+                    <span className="text-[11px] text-gray-800 font-bold">{footballCount}</span>
+                  </div>
+                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.round((footballCount / (footballCount + basketballCount || 1)) * 100)}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+                      className="h-full bg-gradient-to-r from-emerald-400/60 to-emerald-500/40 rounded-full"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-[11px] text-gray-500 font-medium">篮球</span>
+                    <span className="text-[11px] text-gray-800 font-bold">{basketballCount}</span>
+                  </div>
+                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.round((basketballCount / (footballCount + basketballCount || 1)) * 100)}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut', delay: 0.4 }}
+                      className="h-full bg-gradient-to-r from-blue-400/50 to-blue-500/30 rounded-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ═══ Status Filter Pills ═══ */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+            {([
+              { key: 'all' as const, label: '全部' },
+              { key: 'won' as const, label: '已中奖' },
+              { key: 'lost' as const, label: '未中奖' },
+              { key: 'pending' as const, label: '待开奖' },
+            ]).map(s => (
+              <button
+                key={s.key}
+                onClick={() => setStatusFilter(s.key)}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-300 whitespace-nowrap border",
+                  statusFilter === s.key
+                    ? "bg-white/80 backdrop-blur-xl border-emerald-500/20 text-gray-800 shadow-sm"
+                    : "bg-transparent border-transparent text-gray-400"
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Records label */}
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[12px] font-semibold text-gray-500 tracking-wide">投注记录</span>
+            <span className="text-[10px] text-gray-300">{filtered.length} 条</span>
+          </div>
+
+          {/* ═══ Bet Records — Frosted glass cards with hover glow ═══ */}
+          <div className="space-y-2.5">
+            {filtered.map((record, idx) => (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 * idx, duration: 0.4 }}
+                key={record.id}
+                className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_2px_16px_rgba(0,0,0,0.02)] overflow-hidden hover:border-emerald-500/10 transition-all duration-500"
+              >
+                <div className="p-4">
+                  {/* Top info row */}
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100/60 text-gray-400 font-medium tracking-wide">
+                        {record.league}
+                      </span>
+                      <span className="text-[10px] text-gray-300">{record.date} {record.time}</span>
+                    </div>
+                    <span className={cn(
+                      "text-[10px] font-semibold tracking-wide",
+                      record.status === 'won' ? "text-emerald-500" :
+                      record.status === 'lost' ? "text-gray-300" :
+                      "text-amber-400"
+                    )}>
+                      {record.status === 'won' ? '已中' : record.status === 'lost' ? '未中' : '待开'}
+                    </span>
+                  </div>
+
+                  {/* Match name */}
+                  <div className="font-semibold text-[15px] text-gray-800 tracking-tight">{record.match}</div>
+                  <div className="text-[12px] text-gray-400 mt-0.5">{record.play} · {record.odds.toFixed(2)}</div>
+
+                  {/* Bottom row */}
+                  <div className="flex items-center justify-between mt-3.5 pt-3 border-t border-gray-100/50">
+                    <span className="text-[12px] text-gray-300">
+                      投入 <span className="text-gray-500 font-medium">{record.amount}</span>
+                    </span>
+                    <span className={cn(
+                      "text-[16px] font-bold tracking-tight",
+                      record.status === 'won' ? "text-emerald-500" :
+                      record.status === 'lost' ? "text-gray-300" :
+                      "text-amber-400"
+                    )}>
+                      {record.status === 'won' ? `+${(record.prize - record.amount).toFixed(0)}` :
+                       record.status === 'lost' ? `-${record.amount}` :
+                       `${(record.amount * record.odds).toFixed(0)}`}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+
+            {filtered.length === 0 && (
+              <div className="text-center py-20">
+                <div className="text-[14px] font-medium text-gray-300">暂无记录</div>
+                <div className="text-[12px] text-gray-200 mt-1.5">调整筛选条件试试</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ FAB — Frosted Glass (no solid green) ═══ */}
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
         onClick={() => navigate('/add-bet')}
-        className="absolute bottom-6 right-5 w-14 h-14 bg-emerald-500 text-white rounded-full shadow-[0_8px_20px_rgba(16,185,129,0.3)] flex items-center justify-center z-30"
+        className="absolute bottom-24 right-5 w-[52px] h-[52px] rounded-2xl bg-white/70 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.06)] flex items-center justify-center z-30 hover:border-emerald-500/20 transition-all duration-500"
       >
-        <Plus size={28} strokeWidth={2.5} />
+        <Plus size={22} strokeWidth={2} className="text-emerald-500" />
       </motion.button>
     </div>
   );

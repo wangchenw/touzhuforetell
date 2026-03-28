@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Settings, ChevronLeft, ChevronRight, Zap, Clock, Trophy, CalendarDays } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Settings, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { cn } from '@/lib/utils';
 
 type LeagueFilter = 'all' | 'premier' | 'laliga' | 'seriea' | 'ucl' | 'nba' | 'cba';
@@ -51,144 +51,333 @@ const teamColors: Record<string, [string, string]> = {
   '辽宁':   ['#002D72', '#C8102E'],
 };
 
-// ─── SVG Team Logo Component ───
+// ─── SVG Team Logo with Glass Reflection ───
 function TeamLogo({ name, size = 40 }: { name: string; size?: number }) {
   const [primary, secondary] = teamColors[name] || ['#6B7280', '#E5E7EB'];
-  const r = size / 2;
   const initial = name.charAt(0);
-
-  // Football teams → shield shape, basketball → circle
   const isBasketball = ['凯尔特人','雷霆','湖人','勇士','独行侠','太阳','广东','辽宁'].includes(name);
 
   if (isBasketball) {
     return (
       <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
         <circle cx="20" cy="20" r="19" fill={primary} stroke={secondary} strokeWidth="2" />
-        {/* Basketball seam lines */}
         <path d="M5 20 Q20 12, 35 20" stroke={secondary} strokeWidth="1.2" fill="none" opacity="0.5" />
         <path d="M5 20 Q20 28, 35 20" stroke={secondary} strokeWidth="1.2" fill="none" opacity="0.5" />
         <line x1="20" y1="1" x2="20" y2="39" stroke={secondary} strokeWidth="1.2" opacity="0.3" />
         <text x="20" y="24" textAnchor="middle" fill={secondary} fontSize="14" fontWeight="900" fontFamily="system-ui">{initial}</text>
+        {/* Glass reflection overlay */}
+        <ellipse cx="14" cy="12" rx="8" ry="5" fill="white" opacity="0.12" transform="rotate(-15 14 12)" />
       </svg>
     );
   }
 
-  // Football shield
   return (
     <svg width={size} height={size} viewBox="0 0 40 44" fill="none">
       <path d="M20 2 L36 8 L36 24 Q36 36, 20 42 Q4 36, 4 24 L4 8 Z" fill={primary} stroke={primary} strokeWidth="0.5" />
       <path d="M20 6 L33 11 L33 24 Q33 33, 20 39 Q7 33, 7 24 L7 11 Z" fill={secondary} opacity="0.15" />
-      {/* Vertical stripe accent */}
       <rect x="18" y="2" width="4" height="40" fill={secondary} opacity="0.2" rx="1" />
-      <text x="20" y="26" textAnchor="middle" fill="#FFFFFF" fontSize="14" fontWeight="900" fontFamily="system-ui" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>{initial}</text>
+      <text x="20" y="26" textAnchor="middle" fill="#FFFFFF" fontSize="14" fontWeight="900" fontFamily="system-ui">{initial}</text>
+      {/* Glass reflection overlay */}
+      <ellipse cx="14" cy="12" rx="8" ry="6" fill="white" opacity="0.15" transform="rotate(-20 14 12)" />
     </svg>
   );
 }
 
-// ─── League SVG Icons (replacing emoji) ───
-function LeagueIcon({ league, size = 16 }: { league: string; size?: number }) {
-  const cfgMap: Record<string, { color: string }> = {
-    '英超': { color: '#3D195B' },
-    '西甲': { color: '#EE8707' },
-    '意甲': { color: '#024494' },
-    '欧冠': { color: '#091442' },
-    'NBA':  { color: '#C8102E' },
-    'CBA':  { color: '#0D6E3E' },
+// ─── League Icons — Monochrome outlines, color on hover/active ───
+function LeagueIcon({ league, size = 14, active = false }: { league: string; size?: number; active?: boolean }) {
+  const colorMap: Record<string, string> = {
+    '英超': '#3D195B', '西甲': '#EE8707', '意甲': '#024494',
+    '欧冠': '#091442', 'NBA': '#C8102E', 'CBA': '#0D6E3E',
   };
-  const cfg = cfgMap[league] || { color: '#6B7280' };
+  const color = active ? (colorMap[league] || '#6B7280') : '#C9CDD4';
 
   if (league === 'NBA' || league === 'CBA') {
     return (
-      <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="7" fill={cfg.color} />
-        <path d="M3 8 Q8 4, 13 8" stroke="white" strokeWidth="1" fill="none" opacity="0.8" />
-        <path d="M3 8 Q8 12, 13 8" stroke="white" strokeWidth="1" fill="none" opacity="0.8" />
-        <line x1="8" y1="1" x2="8" y2="15" stroke="white" strokeWidth="0.8" opacity="0.6" />
+      <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className="transition-all duration-300">
+        <circle cx="8" cy="8" r="7" fill={active ? color : 'transparent'} stroke={color} strokeWidth="1" />
+        <path d="M3 8 Q8 4, 13 8" stroke={active ? 'white' : color} strokeWidth="0.8" fill="none" opacity="0.7" />
+        <path d="M3 8 Q8 12, 13 8" stroke={active ? 'white' : color} strokeWidth="0.8" fill="none" opacity="0.7" />
+        <line x1="8" y1="1" x2="8" y2="15" stroke={active ? 'white' : color} strokeWidth="0.6" opacity="0.5" />
       </svg>
     );
   }
 
-  // Football leagues → mini shield
   return (
-    <svg width={size} height={size} viewBox="0 0 16 18" fill="none">
-      <path d="M8 1 L14.5 3.5 L14.5 10 Q14.5 15, 8 17 Q1.5 15, 1.5 10 L1.5 3.5 Z" fill={cfg.color} />
-      {league === '欧冠' && <circle cx="8" cy="9" r="2.5" fill="none" stroke="white" strokeWidth="1" opacity="0.9" />}
-      {league === '欧冠' && <circle cx="8" cy="9" r="1" fill="white" opacity="0.9" />}
-      {league !== '欧冠' && <circle cx="8" cy="9" r="2" fill="white" opacity="0.3" />}
+    <svg width={size} height={size} viewBox="0 0 16 18" fill="none" className="transition-all duration-300">
+      <path
+        d="M8 1 L14.5 3.5 L14.5 10 Q14.5 15, 8 17 Q1.5 15, 1.5 10 L1.5 3.5 Z"
+        fill={active ? color : 'transparent'}
+        stroke={color}
+        strokeWidth="1"
+      />
+      {active && league === '欧冠' && <circle cx="8" cy="9" r="2.5" fill="none" stroke="white" strokeWidth="0.8" opacity="0.9" />}
+      {active && league === '欧冠' && <circle cx="8" cy="9" r="1" fill="white" opacity="0.9" />}
     </svg>
   );
 }
 
-// ─── Match Card: Team Column ───
-function TeamColumn({ name, score, isWinner, isDim, status }: {
-  name: string; score?: number; isWinner?: boolean; isDim?: boolean; status: Match['status'];
-}) {
+// ─── Background Beams ───
+function BackgroundBeams() {
   return (
-    <div className="flex flex-col items-center gap-1 w-[80px]">
-      <div className={cn(
-        "rounded-2xl p-1 transition-all",
-        status === 'live' ? "bg-red-50 shadow-sm shadow-red-100" :
-        isWinner ? "bg-gray-50" : ""
-      )}>
-        <TeamLogo name={name} size={42} />
-      </div>
-      <span className={cn(
-        "text-[12px] font-bold text-center leading-tight",
-        isDim ? "text-gray-400" : "text-gray-800"
-      )}>
-        {name}
-      </span>
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <div className="bg-beam-1 absolute left-[20%] w-[1px] h-[50%] bg-gradient-to-b from-transparent via-emerald-400/15 to-transparent" />
+      <div className="bg-beam-2 absolute left-[55%] w-[1px] h-[45%] bg-gradient-to-b from-transparent via-sky-400/10 to-transparent" />
+      <div className="bg-beam-3 absolute left-[80%] w-[1px] h-[40%] bg-gradient-to-b from-transparent via-emerald-300/8 to-transparent" />
     </div>
   );
 }
 
-// ─── Score Center ───
-function ScoreCenter({ match }: { match: Match }) {
+// ─── Segmented Day Picker with spring pill ───
+function DaySegmentedControl({
+  days,
+  activeDay,
+  onSelect,
+  dayLabels,
+  dayDates,
+}: {
+  days: DayTab[];
+  activeDay: DayTab;
+  onSelect: (d: DayTab) => void;
+  dayLabels: Record<DayTab, string>;
+  dayDates: Record<DayTab, string>;
+}) {
+  const activeIdx = days.indexOf(activeDay);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex bg-white/40 backdrop-blur-2xl border-[0.5px] border-white/30 rounded-2xl p-1"
+    >
+      {/* Sliding pill — spring animated */}
+      <motion.div
+        className="absolute top-1 bottom-1 rounded-[14px] bg-white/80 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border-[0.5px] border-white/50"
+        initial={false}
+        animate={{
+          left: `calc(${(activeIdx / days.length) * 100}% + 4px)`,
+          width: `calc(${100 / days.length}% - 8px)`,
+        }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+      />
+
+      {days.map((day) => (
+        <button
+          key={day}
+          onClick={() => onSelect(day)}
+          className="relative z-10 flex-1 py-2 flex flex-col items-center transition-colors duration-300"
+        >
+          <span className={cn(
+            'text-[13px] font-medium tracking-[0.06em] transition-colors duration-300',
+            activeDay === day ? 'text-gray-900' : 'text-gray-400'
+          )}>
+            {dayLabels[day]}
+          </span>
+          <span className={cn(
+            'text-[10px] font-medium tracking-[0.08em] transition-colors duration-300 mt-0.5 mono-time',
+            activeDay === day ? 'text-gray-400' : 'text-gray-300/60'
+          )}>
+            {dayDates[day]}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Hero Live Match Card ───
+function HeroLiveCard({ match, onClick }: { match: Match; onClick: () => void }) {
+  const [homeColor] = teamColors[match.home] || ['#6B7280'];
+  const [awayColor] = teamColors[match.away] || ['#6B7280'];
   const homeWin = (match.homeScore ?? 0) > (match.awayScore ?? 0);
   const awayWin = (match.awayScore ?? 0) > (match.homeScore ?? 0);
 
-  if (match.status === 'upcoming') {
-    return (
-      <div className="flex flex-col items-center gap-0.5">
-        <span className="text-[22px] font-black text-emerald-600 tabular-nums tracking-tight">{match.time}</span>
-        <span className="text-[10px] text-gray-400 font-medium">未开赛</span>
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+      onClick={onClick}
+      className="relative rounded-3xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+    >
+      {/* Team color gradient background — 5% opacity */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.05] blur-2xl"
+          style={{
+            background: `linear-gradient(135deg, ${homeColor} 0%, transparent 50%, ${awayColor} 100%)`,
+          }}
+        />
       </div>
-    );
-  }
+
+      {/* Glassmorphism card */}
+      <div className="relative bg-white/55 backdrop-blur-[40px] border-[0.5px] border-white/40 rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.04)] p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <LeagueIcon league={match.league} size={13} active />
+            <span className="text-[11px] font-medium text-gray-400 tracking-[0.06em]">{match.league}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2 live-pulse">
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+            </span>
+            <span className="text-[10px] font-bold text-red-500 tracking-[0.1em]">LIVE</span>
+          </div>
+        </div>
+
+        {/* Teams + Score */}
+        <div className="flex items-center justify-between">
+          {/* Home */}
+          <div className="flex flex-col items-center gap-1.5 w-[80px]">
+            <div className="relative">
+              <TeamLogo name={match.home} size={48} />
+            </div>
+            <span className={cn(
+              'text-[12px] font-semibold text-center leading-tight tracking-tight',
+              awayWin ? 'text-gray-300' : 'text-gray-800'
+            )}>
+              {match.home}
+            </span>
+          </div>
+
+          {/* Score Center */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-3">
+              <span className={cn(
+                'text-[32px] font-black tabular-nums tracking-tighter',
+                homeWin ? 'text-gray-900' : 'text-gray-400'
+              )}>
+                {match.homeScore}
+              </span>
+              <span className="text-[14px] font-light text-gray-200">:</span>
+              <span className={cn(
+                'text-[32px] font-black tabular-nums tracking-tighter',
+                awayWin ? 'text-gray-900' : 'text-gray-400'
+              )}>
+                {match.awayScore}
+              </span>
+            </div>
+            {/* Live minute with radiating glow */}
+            <span className="text-[13px] font-bold text-red-500 minute-glow mono-time">
+              {match.minute}'
+            </span>
+          </div>
+
+          {/* Away */}
+          <div className="flex flex-col items-center gap-1.5 w-[80px]">
+            <div className="relative">
+              <TeamLogo name={match.away} size={48} />
+            </div>
+            <span className={cn(
+              'text-[12px] font-semibold text-center leading-tight tracking-tight',
+              homeWin ? 'text-gray-300' : 'text-gray-800'
+            )}>
+              {match.away}
+            </span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Regular Match Card (Grid style) ───
+function MatchCard({ match, index, onClick }: { match: Match; index: number; onClick: () => void }) {
+  const homeWin = match.status === 'finished' && (match.homeScore ?? 0) > (match.awayScore ?? 0);
+  const awayWin = match.status === 'finished' && (match.awayScore ?? 0) > (match.homeScore ?? 0);
+  const isUpcoming = match.status === 'upcoming';
+  const isFinished = match.status === 'finished';
 
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div className="flex items-center gap-2.5">
-        <span className={cn(
-          "text-[24px] font-black tabular-nums",
-          match.status === 'live' ? "text-red-500" : homeWin ? "text-gray-900" : "text-gray-300"
-        )}>
-          {match.homeScore}
-        </span>
-        <span className={cn(
-          "text-[11px] font-bold",
-          match.status === 'live' ? "text-red-300" : "text-gray-200"
-        )}>:</span>
-        <span className={cn(
-          "text-[24px] font-black tabular-nums",
-          match.status === 'live' ? "text-red-500" : awayWin ? "text-gray-900" : "text-gray-300"
-        )}>
-          {match.awayScore}
-        </span>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      onClick={onClick}
+      className="group relative rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+    >
+      {/* Hover border gradient — appears on interaction */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+        <div className="absolute inset-0 rounded-2xl shimmer-border" />
       </div>
-      {match.status === 'live' && (
-        <span className="flex items-center gap-1 text-[11px] font-bold text-red-500">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-          </span>
-          {match.minute}'
-        </span>
-      )}
-      {match.status === 'finished' && (
-        <span className="text-[10px] text-gray-400 font-medium">完场</span>
-      )}
-    </div>
+
+      <div className={cn(
+        'relative bg-white/50 backdrop-blur-[40px] border-[0.5px] rounded-2xl p-4 transition-all duration-500',
+        'border-white/30 group-hover:border-emerald-500/10',
+        isFinished && 'opacity-70'
+      )}>
+        {/* League + Status */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5">
+            <LeagueIcon league={match.league} size={12} active={false} />
+            <span className="text-[10px] font-medium text-gray-300 tracking-[0.08em]">{match.league}</span>
+          </div>
+          {isUpcoming ? (
+            <span className="text-[10px] font-semibold text-emerald-500 tracking-[0.06em] upcoming-glow">
+              {match.time} 开赛
+            </span>
+          ) : isFinished ? (
+            <span className="text-[10px] font-medium text-gray-300 tracking-[0.06em]">完场</span>
+          ) : null}
+        </div>
+
+        {/* Teams + Score row */}
+        <div className="flex items-center justify-between">
+          {/* Home */}
+          <div className="flex flex-col items-center gap-1 w-[70px]">
+            <TeamLogo name={match.home} size={36} />
+            <span className={cn(
+              'text-[11px] font-medium text-center leading-tight tracking-tight',
+              awayWin ? 'text-gray-300' : 'text-gray-700'
+            )}>
+              {match.home}
+            </span>
+          </div>
+
+          {/* Center */}
+          <div className="flex flex-col items-center gap-0.5">
+            {isUpcoming ? (
+              <>
+                <span className="text-[20px] font-bold text-gray-800 mono-time tracking-tight">{match.time}</span>
+                <span className="text-[9px] text-gray-300 font-medium tracking-[0.1em]">未开赛</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'text-[22px] font-black tabular-nums tracking-tight',
+                    homeWin ? 'text-gray-900' : 'text-gray-300'
+                  )}>
+                    {match.homeScore}
+                  </span>
+                  <span className="text-[10px] font-light text-gray-200">:</span>
+                  <span className={cn(
+                    'text-[22px] font-black tabular-nums tracking-tight',
+                    awayWin ? 'text-gray-900' : 'text-gray-300'
+                  )}>
+                    {match.awayScore}
+                  </span>
+                </div>
+                <span className="text-[9px] text-gray-300 font-medium tracking-[0.1em]">
+                  {isFinished ? '完场' : `${match.minute}'`}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Away */}
+          <div className="flex flex-col items-center gap-1 w-[70px]">
+            <TeamLogo name={match.away} size={36} />
+            <span className={cn(
+              'text-[11px] font-medium text-center leading-tight tracking-tight',
+              homeWin ? 'text-gray-300' : 'text-gray-700'
+            )}>
+              {match.away}
+            </span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -197,6 +386,17 @@ export default function Schedule() {
   const navigate = useNavigate();
   const [leagueFilter, setLeagueFilter] = useState<LeagueFilter>('all');
   const [dayTab, setDayTab] = useState<DayTab>('today');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Track scroll for sticky header shrink
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handler = () => setScrolled(el.scrollTop > 20);
+    el.addEventListener('scroll', handler, { passive: true });
+    return () => el.removeEventListener('scroll', handler);
+  }, []);
 
   const matchData: Record<DayTab, Match[]> = {
     yesterday: [
@@ -228,7 +428,6 @@ export default function Schedule() {
   const dayLabels: Record<DayTab, string> = { yesterday: '昨天', today: '今天', tomorrow: '明天' };
   const dayDates: Record<DayTab, string> = { yesterday: '3/27', today: '3/28', tomorrow: '3/29' };
   const days: DayTab[] = ['yesterday', 'today', 'tomorrow'];
-  const currentDayIdx = days.indexOf(dayTab);
 
   const leagueFilters = [
     { key: 'all' as const, label: '全部' },
@@ -240,226 +439,183 @@ export default function Schedule() {
     { key: 'cba' as const, label: 'CBA' },
   ];
 
-  const leagueNameMap: Record<string, string> = {
-    all: '全部', premier: '英超', laliga: '西甲', seriea: '意甲', ucl: '欧冠', nba: 'NBA', cba: 'CBA'
-  };
-
-  // Group matches by status order: live → upcoming → finished
+  // Group by status
   const liveMatches = filtered.filter(m => m.status === 'live');
   const upcomingMatches = filtered.filter(m => m.status === 'upcoming');
   const finishedMatches = filtered.filter(m => m.status === 'finished');
 
-  const renderMatchCard = (match: Match, idx: number) => {
-    const homeWin = match.status === 'finished' && (match.homeScore ?? 0) > (match.awayScore ?? 0);
-    const awayWin = match.status === 'finished' && (match.awayScore ?? 0) > (match.homeScore ?? 0);
-    const isLive = match.status === 'live';
-
-    return (
-      <motion.div
-        key={match.id}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: idx * 0.04, duration: 0.3 }}
-        className={cn(
-          "relative bg-white rounded-2xl overflow-hidden transition-shadow",
-          isLive
-            ? "shadow-[0_4px_24px_rgba(239,68,68,0.12)] border border-red-100"
-            : "shadow-sm border border-gray-100/70 hover:shadow-md"
-        )}
-      >
-        {/* Live top accent bar */}
-        {isLive && (
-          <div className="h-[3px] bg-gradient-to-r from-red-500 via-orange-400 to-red-500" />
-        )}
-
-        {/* Header: league + status */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-0">
-          <div className="flex items-center gap-1.5">
-            <LeagueIcon league={match.league} size={14} />
-            <span className="text-[11px] font-semibold text-gray-500">{match.league}</span>
-          </div>
-          {isLive ? (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-              </span>
-              LIVE
-            </span>
-          ) : match.status === 'finished' ? (
-            <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">已结束</span>
-          ) : (
-            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{match.time} 开赛</span>
-          )}
-        </div>
-
-        {/* Main: teams + score */}
-        <div className="flex items-center justify-between px-3 py-3">
-          <TeamColumn
-            name={match.home}
-            score={match.homeScore}
-            isWinner={homeWin}
-            isDim={awayWin}
-            status={match.status}
-          />
-          <ScoreCenter match={match} />
-          <TeamColumn
-            name={match.away}
-            score={match.awayScore}
-            isWinner={awayWin}
-            isDim={homeWin}
-            status={match.status}
-          />
-        </div>
-      </motion.div>
-    );
-  };
-
   return (
-    <div className="flex flex-col h-full bg-[#F7F8FA]">
-      {/* ── Header ── */}
-      <header className="bg-white/80 backdrop-blur-md px-5 py-3 flex justify-between items-center sticky top-0 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.03)] shrink-0">
-        <div className="flex items-center gap-2">
-          <CalendarDays size={20} className="text-emerald-500" />
-          <h1 className="text-[20px] font-black text-gray-900 tracking-tight">赛程</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {liveCount > 0 && (
-            <span className="flex items-center gap-1 text-[11px] font-bold text-red-500 bg-red-50 px-2.5 py-1 rounded-full">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-              </span>
-              {liveCount}
-            </span>
-          )}
-          <button onClick={() => navigate('/profile')} className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
-            <Settings size={20} />
-          </button>
-        </div>
-      </header>
+    <div className="flex flex-col h-full relative overflow-hidden bg-[#FAFBFC]">
 
-      {/* ── Day Switcher ── */}
-      <div className="px-4 pt-3 pb-1 shrink-0">
-        <div className="flex items-center bg-gray-100/80 rounded-2xl p-1">
+      {/* ═══ Aurora Background ═══ */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="aurora-1 absolute -top-20 -right-16 w-72 h-72 rounded-full bg-gradient-to-br from-emerald-200/20 via-teal-100/12 to-transparent blur-3xl" />
+        <div className="aurora-2 absolute top-1/2 -left-20 w-64 h-64 rounded-full bg-gradient-to-br from-sky-200/15 via-blue-100/8 to-transparent blur-3xl" />
+        <div className="aurora-3 absolute bottom-24 right-8 w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-100/12 via-cyan-100/8 to-transparent blur-3xl" />
+      </div>
+
+      {/* ═══ Background Beams ═══ */}
+      <BackgroundBeams />
+
+      {/* ═══ Noise Texture ═══ */}
+      <div className="noise-overlay" />
+
+      {/* ═══ Sticky Header — Frosted glass, shrinks on scroll ═══ */}
+      <motion.header
+        className="relative z-20 shrink-0 transition-all duration-500"
+        animate={{
+          paddingTop: scrolled ? 8 : 16,
+          paddingBottom: scrolled ? 6 : 8,
+        }}
+      >
+        <div className={cn(
+          'px-6 flex justify-between items-center transition-all duration-500',
+          scrolled && 'bg-white/60 backdrop-blur-2xl border-b border-white/30'
+        )}>
+          <div className="flex items-center gap-2.5">
+            <motion.h1
+              animate={{ fontSize: scrolled ? '17px' : '22px' }}
+              transition={{ duration: 0.3 }}
+              className="font-bold text-gray-900 tracking-tight"
+            >
+              赛程
+            </motion.h1>
+            {liveCount > 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 tracking-[0.08em]">
+                <span className="relative flex h-1.5 w-1.5 live-pulse">
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                </span>
+                {liveCount} LIVE
+              </span>
+            )}
+          </div>
           <button
-            onClick={() => currentDayIdx > 0 && setDayTab(days[currentDayIdx - 1])}
-            disabled={currentDayIdx === 0}
-            className="p-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-20 transition-colors rounded-xl"
+            onClick={() => navigate('/profile')}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
           >
-            <ChevronLeft size={16} />
+            <Settings size={17} strokeWidth={1.8} />
           </button>
-          <div className="flex gap-0.5 flex-1 justify-center">
-            {days.map(day => (
+        </div>
+      </motion.header>
+
+      {/* ═══ Day Segmented Control ═══ */}
+      <div className="relative z-10 px-5 pt-1 pb-2 shrink-0">
+        <DaySegmentedControl
+          days={days}
+          activeDay={dayTab}
+          onSelect={setDayTab}
+          dayLabels={dayLabels}
+          dayDates={dayDates}
+        />
+      </div>
+
+      {/* ═══ League Filter Pills ═══ */}
+      <div className="relative z-10 px-5 py-2 shrink-0">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          {leagueFilters.map(l => {
+            const isActive = leagueFilter === l.key;
+            return (
               <button
-                key={day}
-                onClick={() => setDayTab(day)}
+                key={l.key}
+                onClick={() => setLeagueFilter(l.key)}
                 className={cn(
-                  "relative flex-1 py-2 text-[13px] font-semibold rounded-xl transition-all duration-300",
-                  dayTab === day
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all duration-400 border-[0.5px]',
+                  isActive
+                    ? 'bg-white/70 backdrop-blur-xl border-white/40 text-gray-800 shadow-[0_2px_10px_rgba(0,0,0,0.03)]'
+                    : 'bg-transparent border-transparent text-gray-400 hover:text-gray-600'
                 )}
               >
-                <span className="block">{dayLabels[day]}</span>
-                <span className={cn(
-                  "block text-[10px] -mt-0.5 font-medium transition-colors",
-                  dayTab === day ? "text-gray-400" : "text-gray-400/60"
-                )}>{dayDates[day]}</span>
+                {l.key !== 'all' && <LeagueIcon league={l.label} size={11} active={isActive} />}
+                <span className="tracking-[0.04em]">{l.label}</span>
               </button>
-            ))}
-          </div>
-          <button
-            onClick={() => currentDayIdx < days.length - 1 && setDayTab(days[currentDayIdx + 1])}
-            disabled={currentDayIdx === days.length - 1}
-            className="p-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-20 transition-colors rounded-xl"
-          >
-            <ChevronRight size={16} />
-          </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── League Filter ── */}
-      <div className="px-4 py-2.5 shrink-0">
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-          {leagueFilters.map(l => (
-            <button
-              key={l.key}
-              onClick={() => setLeagueFilter(l.key)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all duration-200",
-                leagueFilter === l.key
-                  ? "bg-gray-900 text-white shadow-sm"
-                  : "bg-white text-gray-500 border border-gray-200/80 hover:border-gray-300"
-              )}
-            >
-              {l.key !== 'all' && <LeagueIcon league={l.label} size={12} />}
-              {l.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Match List ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8 space-y-4">
+      {/* ═══ Match List ═══ */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-5 pb-8 space-y-5">
         <AnimatePresence mode="wait">
           <motion.div
             key={dayTab + leagueFilter}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="space-y-4"
+            className="space-y-5"
           >
-            {/* Live section */}
+            {/* ═══ Live Section — Hero Cards ═══ */}
             {liveMatches.length > 0 && (
               <section>
-                <div className="flex items-center gap-1.5 mb-2 px-0.5">
-                  <Zap size={12} className="text-red-500" />
-                  <span className="text-[11px] font-bold text-red-500 tracking-wide">进行中</span>
+                <div className="flex items-center gap-1.5 mb-3 px-0.5">
+                  <span className="relative flex h-1.5 w-1.5 live-pulse">
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                  </span>
+                  <span className="text-[10px] font-bold text-red-500/80 tracking-[0.12em]">进行中</span>
                 </div>
-                <div className="space-y-2.5">
-                  {liveMatches.map((m, i) => renderMatchCard(m, i))}
+                <div className="space-y-3">
+                  {liveMatches.map(m => (
+                    <HeroLiveCard
+                      key={m.id}
+                      match={m}
+                      onClick={() => navigate(`/match/${m.id}`, { state: m })}
+                    />
+                  ))}
                 </div>
               </section>
             )}
 
-            {/* Upcoming section */}
+            {/* ═══ Upcoming Section — Grid ═══ */}
             {upcomingMatches.length > 0 && (
               <section>
-                <div className="flex items-center gap-1.5 mb-2 px-0.5">
-                  <Clock size={12} className="text-emerald-500" />
-                  <span className="text-[11px] font-bold text-emerald-600 tracking-wide">即将开赛</span>
-                  <span className="text-[10px] text-gray-400 ml-auto">{upcomingMatches.length} 场</span>
+                <div className="flex items-center justify-between mb-3 px-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 upcoming-glow" />
+                    <span className="text-[10px] font-bold text-emerald-500/80 tracking-[0.12em]">即将开赛</span>
+                  </div>
+                  <span className="text-[10px] text-gray-300 font-medium tracking-wide">{upcomingMatches.length} 场</span>
                 </div>
-                <div className="space-y-2.5">
-                  {upcomingMatches.map((m, i) => renderMatchCard(m, i))}
+                <div className="grid grid-cols-1 gap-2.5">
+                  {upcomingMatches.map((m, i) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      index={i}
+                      onClick={() => navigate(`/match/${m.id}`, { state: m })}
+                    />
+                  ))}
                 </div>
               </section>
             )}
 
-            {/* Finished section */}
+            {/* ═══ Finished Section — Grid ═══ */}
             {finishedMatches.length > 0 && (
               <section>
-                <div className="flex items-center gap-1.5 mb-2 px-0.5">
-                  <Trophy size={12} className="text-gray-400" />
-                  <span className="text-[11px] font-bold text-gray-400 tracking-wide">已结束</span>
-                  <span className="text-[10px] text-gray-300 ml-auto">{finishedMatches.length} 场</span>
+                <div className="flex items-center justify-between mb-3 px-0.5">
+                  <span className="text-[10px] font-medium text-gray-300 tracking-[0.12em]">已结束</span>
+                  <span className="text-[10px] text-gray-300/60 font-medium tracking-wide">{finishedMatches.length} 场</span>
                 </div>
-                <div className="space-y-2.5">
-                  {finishedMatches.map((m, i) => renderMatchCard(m, i))}
+                <div className="grid grid-cols-1 gap-2.5">
+                  {finishedMatches.map((m, i) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      index={i + (liveMatches.length + upcomingMatches.length)}
+                      onClick={() => navigate(`/match/${m.id}`, { state: m })}
+                    />
+                  ))}
                 </div>
               </section>
             )}
 
-            {/* Empty */}
+            {/* Empty State */}
             {filtered.length === 0 && (
-              <div className="text-center py-20">
-                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <CalendarDays size={28} className="text-gray-300" />
+              <div className="text-center py-24">
+                <div className="w-14 h-14 bg-white/40 backdrop-blur-xl border-[0.5px] border-white/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CalendarDays size={24} className="text-gray-300" strokeWidth={1.5} />
                 </div>
-                <div className="text-[15px] font-bold text-gray-400 mb-1">暂无比赛</div>
-                <div className="text-[13px] text-gray-300">换个日期或联赛看看</div>
+                <div className="text-[14px] font-medium text-gray-300 tracking-wide">暂无比赛</div>
+                <div className="text-[11px] text-gray-200 mt-1 tracking-wide">换个日期或联赛看看</div>
               </div>
             )}
           </motion.div>
