@@ -49,7 +49,7 @@ function GlassOrb({
           className="w-20 h-20 rounded-full bg-white/40 backdrop-blur-[40px] border-[0.5px] border-white/50 flex items-center justify-center shadow-[0_8px_40px_rgba(0,0,0,0.06)] icon-glow"
           style={{ '--glow-color': glowColor } as React.CSSProperties}
         >
-          <span className="text-[28px] font-light text-gray-800 tracking-tight">
+          <span className="text-[28px] font-normal text-gray-800 tracking-tight">
             {name.charAt(0) || '绿'}
           </span>
         </div>
@@ -297,7 +297,7 @@ export default function Profile() {
               type="text"
               value={prefs.name}
               onChange={(e) => updatePrefs({ name: e.target.value })}
-              className="text-[22px] font-light text-center text-gray-800 tracking-tight border-none outline-none bg-transparent w-full placeholder:text-gray-300 focus:ring-0"
+              className="text-[22px] font-normal text-center text-gray-800 tracking-tight border-none outline-none bg-transparent w-full placeholder:text-gray-300 focus:ring-0"
               placeholder="输入助手昵称"
             />
             <TextReveal
@@ -334,7 +334,7 @@ export default function Profile() {
               key={prefs.risk}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-[10px] text-gray-300 mt-2.5 text-center tracking-wide font-light"
+              className="text-[10px] text-gray-300 mt-2.5 text-center tracking-wide font-normal"
             >
               {prefs.risk === 'conservative' ? '稳扎稳打，低风险低回报' :
                prefs.risk === 'steady' ? '攻守兼备，风险适中' :
@@ -440,11 +440,11 @@ export default function Profile() {
               type="time"
               value={prefs.morningTime}
               onChange={(e) => updatePrefs({ morningTime: e.target.value })}
-              className="text-[18px] font-light text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
+              className="text-[18px] font-normal text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
             />
             <TextReveal
               text="前日复盘 · 今日关注"
-              className="text-[9px] text-gray-300/60 font-light tracking-widest mt-1 block"
+              className="text-[9px] text-gray-300/60 font-normal tracking-widest mt-1 block"
               delay={0.5}
             />
           </div>
@@ -462,7 +462,7 @@ export default function Profile() {
                   type="time"
                   value={prefs.strategyTimes[0]}
                   onChange={(e) => updatePrefs({ strategyTimes: [e.target.value, prefs.strategyTimes[1]] })}
-                  className="text-[14px] font-light text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
+                  className="text-[14px] font-normal text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
                 />
               </div>
               <div>
@@ -471,7 +471,7 @@ export default function Profile() {
                   type="time"
                   value={prefs.strategyTimes[1]}
                   onChange={(e) => updatePrefs({ strategyTimes: [prefs.strategyTimes[0], e.target.value] })}
-                  className="text-[14px] font-light text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
+                  className="text-[14px] font-normal text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
                 />
               </div>
             </div>
@@ -492,7 +492,7 @@ export default function Profile() {
             </div>
             <TextReveal
               text="您投注比赛的重点事件将实时推送"
-              className="text-[10px] text-gray-300/50 font-light tracking-wide block mb-3"
+              className="text-[10px] text-gray-300/50 font-normal tracking-wide block mb-3"
               delay={0.4}
             />
           </div>
@@ -513,7 +513,7 @@ export default function Profile() {
                     <span className="text-[13px] font-medium text-gray-700 tracking-tight block">{event.label}</span>
                     <TextReveal
                       text={event.desc || ''}
-                      className="text-[10px] text-gray-300/70 font-light tracking-wide mt-0.5 block"
+                      className="text-[10px] text-gray-300/70 font-normal tracking-wide mt-0.5 block"
                       delay={0.1}
                     />
                   </div>

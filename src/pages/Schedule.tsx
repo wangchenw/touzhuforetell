@@ -120,9 +120,6 @@ function LeagueIcon({ league, size = 14, active = false }: { league: string; siz
 function BackgroundBeams() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="bg-beam-1 absolute left-[20%] w-[1px] h-[50%] bg-gradient-to-b from-transparent via-emerald-400/15 to-transparent" />
-      <div className="bg-beam-2 absolute left-[55%] w-[1px] h-[45%] bg-gradient-to-b from-transparent via-sky-400/10 to-transparent" />
-      <div className="bg-beam-3 absolute left-[80%] w-[1px] h-[40%] bg-gradient-to-b from-transparent via-emerald-300/8 to-transparent" />
     </div>
   );
 }
@@ -249,7 +246,7 @@ function HeroLiveCard({ match, onClick }: { match: Match; onClick: () => void })
               )}>
                 {match.homeScore}
               </span>
-              <span className="text-[14px] font-light text-gray-200">:</span>
+              <span className="text-[14px] font-normal text-gray-200">:</span>
               <span className={cn(
                 'text-[32px] font-black tabular-nums tracking-tighter',
                 awayWin ? 'text-gray-900' : 'text-gray-400'
@@ -350,7 +347,7 @@ function MatchCard({ match, index, onClick }: { match: Match; index: number; onC
                   )}>
                     {match.homeScore}
                   </span>
-                  <span className="text-[10px] font-light text-gray-200">:</span>
+                  <span className="text-[10px] font-normal text-gray-200">:</span>
                   <span className={cn(
                     'text-[22px] font-black tabular-nums tracking-tight',
                     awayWin ? 'text-gray-900' : 'text-gray-300'

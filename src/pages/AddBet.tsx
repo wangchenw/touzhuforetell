@@ -138,7 +138,7 @@ function GlassInput({
     >
       <div className="flex items-baseline gap-1.5 mb-2.5">
         <span className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase">{label}</span>
-        {note && <span className="text-[9px] text-gray-300/50 font-light tracking-wide">{note}</span>}
+        {note && <span className="text-[9px] text-gray-300/50 font-normal tracking-wide">{note}</span>}
       </div>
       <div className="relative">
         <input
@@ -149,7 +149,7 @@ function GlassInput({
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
           className={cn(
-            'w-full bg-transparent border-none outline-none text-gray-800 placeholder:text-gray-300/50 focus:ring-0 tracking-wide font-light',
+            'w-full bg-transparent border-none outline-none text-gray-800 placeholder:text-gray-300/50 focus:ring-0 tracking-wide font-normal',
             large ? 'text-[22px]' : 'text-[15px]'
           )}
         />
@@ -211,8 +211,6 @@ export default function AddBet() {
 
       {/* Background Beams */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="bg-beam-1 absolute left-[25%] w-[1px] h-[50%] bg-gradient-to-b from-transparent via-emerald-400/12 to-transparent" />
-        <div className="bg-beam-2 absolute left-[60%] w-[1px] h-[45%] bg-gradient-to-b from-transparent via-sky-400/8 to-transparent" />
       </div>
 
       {/* ═══ Header ═══ */}
@@ -250,7 +248,7 @@ export default function AddBet() {
               <span className="text-[16px] font-semibold text-gray-800 tracking-tight block leading-relaxed">
                 拍照智能识别
               </span>
-              <span className="text-[11px] text-gray-400/70 font-light tracking-wide block mt-1 leading-[1.7]">
+              <span className="text-[11px] text-gray-400/70 font-normal tracking-wide block mt-1 leading-[1.7]">
                 支持竞彩网实体票一键导入
               </span>
             </div>
@@ -265,7 +263,7 @@ export default function AddBet() {
           className="flex items-center gap-4 py-1"
         >
           <div className="beam-divider flex-1" />
-          <span className="text-[10px] text-gray-300/50 font-light tracking-[0.2em] uppercase">手动输入</span>
+          <span className="text-[10px] text-gray-300/50 font-normal tracking-[0.2em] uppercase">手动输入</span>
           <div className="beam-divider flex-1" />
         </motion.div>
 
@@ -332,7 +330,7 @@ export default function AddBet() {
             className="rounded-3xl bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5 flex items-center justify-between"
           >
             <span className="text-[11px] text-gray-300 font-medium tracking-[0.1em] uppercase">预计最高奖金</span>
-            <span className="text-[24px] font-light text-gray-800 tracking-tighter mono-time">
+            <span className="text-[24px] font-normal text-gray-800 tracking-tighter mono-time">
               <span className="text-[13px] text-gray-300 mr-0.5">¥</span>
               {prize}
             </span>

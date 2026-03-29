@@ -154,9 +154,6 @@ function BackgroundBeams() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       {/* Beams — tall narrow rectangles that drift upward */}
-      <div className="bg-beam-1 absolute left-[15%] w-[1px] h-[60%] bg-gradient-to-b from-transparent via-emerald-400/20 to-transparent" />
-      <div className="bg-beam-2 absolute left-[45%] w-[1px] h-[50%] bg-gradient-to-b from-transparent via-sky-400/15 to-transparent" />
-      <div className="bg-beam-3 absolute left-[75%] w-[1px] h-[55%] bg-gradient-to-b from-transparent via-emerald-300/10 to-transparent" />
     </div>
   );
 }
@@ -513,7 +510,7 @@ export default function Assistant() {
                   >
                     <TextGenerateEffect
                       text={`我是您的小助手，${prefs.name}`}
-                      className="text-[20px] font-light text-gray-800 tracking-tight"
+                      className="text-[20px] font-normal text-gray-800 tracking-tight"
                       delay={0.3}
                     />
                   </motion.div>
@@ -531,7 +528,7 @@ export default function Assistant() {
                         <GlowingIcon icon={BarChart3} color="text-blue-500" glowColor="rgba(59,130,246,0.1)" />
                         <div className="flex-1 min-w-0">
                           <h3 className="text-[14px] font-semibold text-gray-800 tracking-tight">每日早报</h3>
-                          <p className="text-[11px] text-gray-400 font-light mt-1.5 leading-[1.7] tracking-wide">
+                          <p className="text-[11px] text-gray-400 font-normal mt-1.5 leading-[1.7] tracking-wide">
                             每天 {prefs.morningTime} 准时送达
                           </p>
                           {/* TextReveal preview */}
@@ -563,7 +560,7 @@ export default function Assistant() {
                     >
                       <GlowingIcon icon={Zap} color="text-amber-500" glowColor="rgba(245,158,11,0.1)" />
                       <h3 className="text-[13px] font-semibold text-gray-800 tracking-tight mt-3">早晚盘策略</h3>
-                      <p className="text-[10px] text-gray-400/70 font-light mt-1 leading-[1.6] tracking-wide">
+                      <p className="text-[10px] text-gray-400/70 font-normal mt-1 leading-[1.6] tracking-wide">
                         {prefs.strategyTimes[0]} & {prefs.strategyTimes[1]}
                       </p>
                       <div className="mt-2.5 text-[10px] text-gray-300 tracking-widest">
@@ -580,7 +577,7 @@ export default function Assistant() {
                     >
                       <GlowingIcon icon={ShieldCheck} color="text-rose-400" glowColor="rgba(244,63,94,0.08)" />
                       <h3 className="text-[13px] font-semibold text-gray-800 tracking-tight mt-3">赛况监控</h3>
-                      <p className="text-[10px] text-gray-400/70 font-light mt-1 leading-[1.6] tracking-wide">
+                      <p className="text-[10px] text-gray-400/70 font-normal mt-1 leading-[1.6] tracking-wide">
                         进球 · 红牌 · 结算
                       </p>
                       <div className="mt-2.5 text-[10px] text-gray-300 tracking-widest">
@@ -624,7 +621,7 @@ export default function Assistant() {
                       </div>
                       <span className="text-[12px] font-semibold text-gray-500 tracking-wide">定制完成</span>
                     </div>
-                    <div className="whitespace-pre-wrap text-[13px] leading-[1.9] text-gray-600 font-light tracking-wide">{msg.text}</div>
+                    <div className="whitespace-pre-wrap text-[13px] leading-[1.9] text-gray-600 font-normal tracking-wide">{msg.text}</div>
                   </div>
 
                   {/* Post-summary actions */}
@@ -656,7 +653,7 @@ export default function Assistant() {
                         : 'bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 text-gray-700 rounded-2xl rounded-tl-lg shadow-[0_2px_16px_rgba(0,0,0,0.02)]'
                     )}
                   >
-                    <div className="whitespace-pre-wrap text-[13px] leading-[1.8] tracking-wide font-light">{msg.text}</div>
+                    <div className="whitespace-pre-wrap text-[13px] leading-[1.8] tracking-wide font-normal">{msg.text}</div>
                   </div>
 
                   {/* ═══ Onboarding Options — Glassmorphism ═══ */}
@@ -674,7 +671,7 @@ export default function Assistant() {
                             </div>
                             <div>
                               <div className="text-[13px] font-medium text-gray-700 tracking-tight">{opt.label}</div>
-                              {opt.desc && <div className="text-[10px] text-gray-400/70 font-light mt-0.5 tracking-wide">{opt.desc}</div>}
+                              {opt.desc && <div className="text-[10px] text-gray-400/70 font-normal mt-0.5 tracking-wide">{opt.desc}</div>}
                             </div>
                           </button>
                         ))
@@ -786,7 +783,7 @@ export default function Assistant() {
             onBlur={() => setInputFocused(false)}
             placeholder={onboardStep ? '请通过上方选项完成定制...' : `问${prefs.name}任何问题...`}
             disabled={!!onboardStep}
-            className="flex-1 bg-transparent outline-none text-[14px] font-light text-gray-800 placeholder:text-gray-300 py-2.5 disabled:opacity-40 tracking-wide"
+            className="flex-1 bg-transparent outline-none text-[14px] font-normal text-gray-800 placeholder:text-gray-300 py-2.5 disabled:opacity-40 tracking-wide"
           />
           <motion.button
             onClick={() => handleSend()}

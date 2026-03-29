@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronLeft, TrendingUp, Users, Newspaper, BarChart3, AlertTriangle, Zap, Target, Activity, Shield } from 'lucide-react';
+import { ChevronLeft, TrendingUp, Users, Newspaper, BarChart3, AlertTriangle, Zap, Target, Activity, Shield, X, Swords, Trophy, Star } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,299 @@ const teamColors: Record<string, [string, string]> = {
   '独行侠': ['#00538C', '#B8C4CA'], '太阳': ['#E56020', '#1D1160'],
   '广东': ['#C8102E', '#FDB927'], '辽宁': ['#002D72', '#C8102E'],
 };
+
+// ─── Team Detail Data ───
+interface TeamDetail {
+  coach: string;
+  coachYears: string;
+  coachStyle: string;
+  formation: string;
+  tactics: string[];
+  season: { wins: number; draws: number; losses: number; goals: number; conceded: number };
+  radar: { label: string; value: number }[]; // 0-100
+  strengths: string[];
+  weaknesses: string[];
+}
+
+const teamDetailData: Record<string, TeamDetail> = {
+  '阿森纳': {
+    coach: '阿尔特塔', coachYears: '2019至今', coachStyle: '控球进攻型',
+    formation: '4-3-3', tactics: ['高位逼抢', '边路传中', '控球导向', '定位球战术突出'],
+    season: { wins: 22, draws: 5, losses: 3, goals: 68, conceded: 24 },
+    radar: [{ label: '进攻', value: 88 }, { label: '防守', value: 82 }, { label: '控球', value: 85 }, { label: '体能', value: 78 }, { label: '纪律', value: 90 }, { label: '士气', value: 92 }],
+    strengths: ['主场战绩联赛最佳', '定位球得分能力强', '后防线稳固'],
+    weaknesses: ['客场偶有失稳', '板凳深度略显不足'],
+  },
+  '曼城': {
+    coach: '瓜迪奥拉', coachYears: '2016至今', coachStyle: 'Tiki-Taka 传控体系',
+    formation: '4-2-3-1', tactics: ['极致控球', '肋部渗透', '高位压迫', '伪9号战术'],
+    season: { wins: 20, draws: 6, losses: 4, goals: 62, conceded: 28 },
+    radar: [{ label: '进攻', value: 90 }, { label: '防守', value: 75 }, { label: '控球', value: 95 }, { label: '体能', value: 82 }, { label: '纪律', value: 85 }, { label: '士气', value: 80 }],
+    strengths: ['中场控制力联赛顶级', '教练战术调整灵活', '进攻端多点开花'],
+    weaknesses: ['罗德里伤缺影响中场', '防守端空中对抗偏弱'],
+  },
+  '利物浦': {
+    coach: '斯洛特', coachYears: '2024至今', coachStyle: '高强度压迫反击',
+    formation: '4-3-3', tactics: ['极限反击', '两翼齐飞', '中场绞杀', '全场紧逼'],
+    season: { wins: 21, draws: 4, losses: 5, goals: 70, conceded: 30 },
+    radar: [{ label: '进攻', value: 92 }, { label: '防守', value: 78 }, { label: '控球', value: 76 }, { label: '体能', value: 90 }, { label: '纪律', value: 82 }, { label: '士气', value: 88 }],
+    strengths: ['反击速度联赛最快', '前场三叉戟火力猛', '安菲尔德主场氛围'],
+    weaknesses: ['高位压迫后防线身后空当', '伤病轮换管理压力'],
+  },
+  '切尔西': {
+    coach: '马雷斯卡', coachYears: '2024至今', coachStyle: '攻守均衡型',
+    formation: '4-2-3-1', tactics: ['快速转换', '边后卫内收', '中路渗透', '灵活变阵'],
+    season: { wins: 16, draws: 8, losses: 6, goals: 55, conceded: 35 },
+    radar: [{ label: '进攻', value: 78 }, { label: '防守', value: 72 }, { label: '控球', value: 80 }, { label: '体能', value: 85 }, { label: '纪律', value: 75 }, { label: '士气', value: 76 }],
+    strengths: ['年轻球员冲击力强', '替补席深度充足', '定位球防守扎实'],
+    weaknesses: ['阵容磨合尚在进行', '关键比赛经验不足'],
+  },
+};
+
+// Default fallback for teams not in the map
+const defaultTeamDetail = (name: string): TeamDetail => ({
+  coach: '主教练', coachYears: '2023至今', coachStyle: '均衡型',
+  formation: '4-4-2', tactics: ['稳固防守', '中路进攻', '定位球', '控球导向'],
+  season: { wins: 15, draws: 8, losses: 7, goals: 48, conceded: 32 },
+  radar: [{ label: '进攻', value: 72 }, { label: '防守', value: 70 }, { label: '控球', value: 68 }, { label: '体能', value: 75 }, { label: '纪律', value: 78 }, { label: '士气', value: 74 }],
+  strengths: ['团队配合默契', '整体战术执行力强'],
+  weaknesses: ['缺少绝对核心球星', '客场战绩有待提升'],
+});
+
+// ─── SVG Radar Chart ───
+function RadarChart({ data, color, size = 200 }: { data: { label: string; value: number }[]; color: string; size?: number }) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size * 0.38;
+  const n = data.length;
+  const angleStep = (2 * Math.PI) / n;
+  const levels = [0.25, 0.5, 0.75, 1];
+
+  const getPoint = (i: number, scale: number) => {
+    const angle = angleStep * i - Math.PI / 2;
+    return [cx + r * scale * Math.cos(angle), cy + r * scale * Math.sin(angle)];
+  };
+
+  const polygonPoints = data.map((d, i) => getPoint(i, d.value / 100).join(',')).join(' ');
+  const gridPolygons = levels.map(l => data.map((_, i) => getPoint(i, l).join(',')).join(' '));
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto">
+      {/* Grid polygons */}
+      {gridPolygons.map((pts, li) => (
+        <polygon key={li} points={pts} fill="none" stroke="rgba(156,163,175,0.15)" strokeWidth="0.8" />
+      ))}
+      {/* Axis lines */}
+      {data.map((_, i) => {
+        const [px, py] = getPoint(i, 1);
+        return <line key={i} x1={cx} y1={cy} x2={px} y2={py} stroke="rgba(156,163,175,0.1)" strokeWidth="0.5" />;
+      })}
+      {/* Data polygon */}
+      <polygon points={polygonPoints} fill={`${color}18`} stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Data points */}
+      {data.map((d, i) => {
+        const [px, py] = getPoint(i, d.value / 100);
+        return <circle key={`dot-${i}`} cx={px} cy={py} r="3" fill={color} opacity="0.9" />;
+      })}
+      {/* Labels */}
+      {data.map((d, i) => {
+        const [px, py] = getPoint(i, 1.2);
+        return (
+          <text key={`label-${i}`} x={px} y={py} textAnchor="middle" dominantBaseline="central"
+            fontSize="10" fontWeight="500" fill="#9CA3AF" className="tracking-wide"
+          >
+            {d.label}
+          </text>
+        );
+      })}
+      {/* Values */}
+      {data.map((d, i) => {
+        const [px, py] = getPoint(i, 1.2);
+        return (
+          <text key={`val-${i}`} x={px} y={py + 12} textAnchor="middle" dominantBaseline="central"
+            fontSize="11" fontWeight="700" fill={color}
+          >
+            {d.value}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ─── Team Detail Modal ───
+function TeamDetailModal({ team, onClose }: { team: string; onClose: () => void }) {
+  const detail = teamDetailData[team] || defaultTeamDetail(team);
+  const [primary] = teamColors[team] || ['#6B7280'];
+  const { season } = detail;
+  const totalGames = season.wins + season.draws + season.losses;
+  const winRate = Math.round((season.wins / totalGames) * 100);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+
+      {/* Sheet */}
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-[390px] max-h-[85vh] bg-[#F7F8FA] rounded-t-[28px] overflow-hidden shadow-2xl"
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-2.5 pb-1">
+          <div className="w-9 h-1 rounded-full bg-gray-300/50" />
+        </div>
+
+        {/* Scrollable content */}
+        <div className="overflow-y-auto max-h-[calc(85vh-40px)] no-scrollbar px-5 pb-8 space-y-4">
+
+          {/* Header: Badge + Team Name + Close */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              <TeamBadge name={team} size={44} />
+              <div>
+                <h2 className="text-[18px] font-bold text-gray-900 tracking-tight">{team}</h2>
+                <p className="text-[11px] text-gray-400 font-medium tracking-wide mt-0.5">
+                  {season.wins}胜 {season.draws}平 {season.losses}负 · 胜率 {winRate}%
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/60 backdrop-blur-xl border border-white/30 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* ═══ Radar Chart Card ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-3xl bg-white/55 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5"
+          >
+            <h3 className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase mb-2">能力雷达 · RADAR</h3>
+            <RadarChart data={detail.radar} color={primary} size={220} />
+          </motion.div>
+
+          {/* ═══ Coach & Tactics Card ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="rounded-3xl bg-white/55 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5"
+          >
+            <h3 className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase mb-4">教练 · COACH</h3>
+            <div className="flex items-center gap-4 mb-4">
+              {/* Coach avatar placeholder */}
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${primary}15` }}
+              >
+                <Star size={20} strokeWidth={1.5} style={{ color: primary }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[15px] font-semibold text-gray-800 tracking-tight block">{detail.coach}</span>
+                <span className="text-[11px] text-gray-400 font-normal tracking-wide block mt-0.5">{detail.coachYears}</span>
+                <span className="text-[11px] font-medium tracking-wide mt-1 block" style={{ color: primary }}>{detail.coachStyle}</span>
+              </div>
+            </div>
+
+            {/* Formation */}
+            <div className="flex items-center gap-2 mb-3">
+              <Swords size={13} strokeWidth={1.8} className="text-gray-400" />
+              <span className="text-[10px] text-gray-300 font-medium tracking-[0.1em] uppercase">常用阵型</span>
+              <span className="text-[13px] font-semibold text-gray-700 ml-auto tracking-tight">{detail.formation}</span>
+            </div>
+
+            {/* Tactics tags */}
+            <h4 className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase mb-2 mt-4">技战术特点</h4>
+            <div className="flex flex-wrap gap-1.5">
+              {detail.tactics.map((t, i) => (
+                <span key={i} className="text-[11px] font-medium px-3 py-1.5 rounded-xl border-[0.5px] tracking-wide"
+                  style={{ backgroundColor: `${primary}08`, borderColor: `${primary}20`, color: primary }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* ═══ Season Stats Card ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="rounded-3xl bg-white/55 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5"
+          >
+            <h3 className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase mb-3">赛季数据 · SEASON</h3>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {[
+                { label: '进球', val: season.goals, icon: '⚽' },
+                { label: '失球', val: season.conceded, icon: '🥅' },
+                { label: '胜率', val: `${winRate}%`, icon: '📊' },
+              ].map((s, i) => (
+                <div key={i} className="text-center rounded-2xl bg-gray-50/60 py-3">
+                  <span className="text-[16px] block mb-0.5">{s.icon}</span>
+                  <span className="text-[16px] font-bold text-gray-800 mono-time block">{s.val}</span>
+                  <span className="text-[9px] text-gray-400 font-medium tracking-[0.1em] uppercase">{s.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Win/Draw/Loss bar */}
+            <div className="flex rounded-full overflow-hidden h-2 bg-gray-100/60">
+              <div className="bg-emerald-500/70 rounded-l-full" style={{ width: `${(season.wins / totalGames) * 100}%` }} />
+              <div className="bg-gray-300/60" style={{ width: `${(season.draws / totalGames) * 100}%` }} />
+              <div className="bg-red-400/70 rounded-r-full" style={{ width: `${(season.losses / totalGames) * 100}%` }} />
+            </div>
+            <div className="flex justify-between mt-1.5">
+              <span className="text-[9px] text-emerald-500 font-medium">{season.wins}胜</span>
+              <span className="text-[9px] text-gray-400 font-medium">{season.draws}平</span>
+              <span className="text-[9px] text-red-400 font-medium">{season.losses}负</span>
+            </div>
+          </motion.div>
+
+          {/* ═══ Strengths & Weaknesses ═══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="rounded-3xl bg-white/55 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5"
+          >
+            <h3 className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase mb-3">优劣势分析 · SWOT</h3>
+            <div className="space-y-2">
+              {detail.strengths.map((s, i) => (
+                <div key={`s-${i}`} className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-emerald-500/10 flex items-center justify-center mt-0.5 shrink-0">
+                    <Trophy size={11} strokeWidth={2} className="text-emerald-500" />
+                  </div>
+                  <span className="text-[12px] text-gray-700 font-normal leading-relaxed tracking-wide">{s}</span>
+                </div>
+              ))}
+              {detail.weaknesses.map((w, i) => (
+                <div key={`w-${i}`} className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-amber-500/10 flex items-center justify-center mt-0.5 shrink-0">
+                    <AlertTriangle size={11} strokeWidth={2} className="text-amber-500" />
+                  </div>
+                  <span className="text-[12px] text-gray-600 font-normal leading-relaxed tracking-wide">{w}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 // ─── Team Badge with glass reflection ───
 function TeamBadge({ name, size = 48 }: { name: string; size?: number }) {
@@ -250,7 +543,7 @@ function VisualPitch({
         <motion.span
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: formRevealed ? 1 : 0, y: formRevealed ? 0 : 10 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="text-[10px] text-gray-300 font-light tracking-[0.12em]"
+          className="text-[10px] text-gray-300 font-normal tracking-[0.12em]"
         >{homeLineup.formation} vs {awayLineup.formation}</motion.span>
         <motion.span
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: formRevealed ? 1 : 0, y: formRevealed ? 0 : 10 }}
@@ -337,6 +630,9 @@ function VisualPitch({
                   {String(i + 1).padStart(2, '0')}
                 </span>
               </div>
+              <span className="text-[7px] text-emerald-800/70 font-medium whitespace-nowrap mt-0.5 tracking-tight drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">
+                {p.name}
+              </span>
               <AnimatePresence>
                 {active && (
                   <motion.div
@@ -344,7 +640,7 @@ function VisualPitch({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.9 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute -bottom-7 whitespace-nowrap bg-gray-900/85 backdrop-blur-xl text-white text-[9px] px-2.5 py-1 rounded-full shadow-lg"
+                    className="absolute -bottom-9 whitespace-nowrap bg-gray-900/85 backdrop-blur-xl text-white text-[9px] px-2.5 py-1 rounded-full shadow-lg z-30"
                   >
                     {p.name}
                     <span className="text-emerald-300/60 ml-1.5 text-[8px]">{p.pos}</span>
@@ -381,6 +677,9 @@ function VisualPitch({
                   {String(i + 1).padStart(2, '0')}
                 </span>
               </div>
+              <span className="text-[7px] text-blue-800/70 font-medium whitespace-nowrap mt-0.5 tracking-tight drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">
+                {p.name}
+              </span>
               <AnimatePresence>
                 {active && (
                   <motion.div
@@ -388,7 +687,7 @@ function VisualPitch({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -4, scale: 0.9 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute -top-7 whitespace-nowrap bg-gray-900/85 backdrop-blur-xl text-white text-[9px] px-2.5 py-1 rounded-full shadow-lg"
+                    className="absolute -top-9 whitespace-nowrap bg-gray-900/85 backdrop-blur-xl text-white text-[9px] px-2.5 py-1 rounded-full shadow-lg z-30"
                   >
                     {p.name}
                     <span className="text-blue-300/60 ml-1.5 text-[8px]">{p.pos}</span>
@@ -454,24 +753,24 @@ function LiquidFillProbBar({ home, draw, away, homeTeam, awayTeam }: { home: num
           <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase mb-1">主胜</span>
           <span className="text-[28px] font-semibold text-emerald-500 mono-time leading-none tracking-tighter">
             <NumberTicker value={`${home}`} delay={0} />
-            <span className="text-[16px] font-light text-emerald-400/60 ml-0.5">%</span>
+            <span className="text-[16px] font-normal text-emerald-400/60 ml-0.5">%</span>
           </span>
-          <span className="text-[10px] text-gray-300 font-light mt-1 tracking-tight">{homeTeam}</span>
+          <span className="text-[10px] text-gray-300 font-normal mt-1 tracking-tight">{homeTeam}</span>
         </div>
         <div className="flex flex-col items-center">
           <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase mb-1">平局</span>
-          <span className="text-[20px] font-light text-gray-400 mono-time leading-none tracking-tighter">
+          <span className="text-[20px] font-normal text-gray-400 mono-time leading-none tracking-tighter">
             <NumberTicker value={`${draw}`} delay={200} />
-            <span className="text-[12px] font-light text-gray-300/50 ml-0.5">%</span>
+            <span className="text-[12px] font-normal text-gray-300/50 ml-0.5">%</span>
           </span>
         </div>
         <div className="flex flex-col items-end">
           <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase mb-1">客胜</span>
           <span className="text-[28px] font-semibold text-sky-500 mono-time leading-none tracking-tighter">
             <NumberTicker value={`${away}`} delay={100} />
-            <span className="text-[16px] font-light text-sky-400/60 ml-0.5">%</span>
+            <span className="text-[16px] font-normal text-sky-400/60 ml-0.5">%</span>
           </span>
-          <span className="text-[10px] text-gray-300 font-light mt-1 tracking-tight">{awayTeam}</span>
+          <span className="text-[10px] text-gray-300 font-normal mt-1 tracking-tight">{awayTeam}</span>
         </div>
       </div>
 
@@ -618,21 +917,21 @@ function PossessionDonut({ home, away, homeTeam, awayTeam }: { home: number; awa
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <div className="w-2 h-2 rounded-full bg-emerald-500/60" style={{ boxShadow: '0 0 4px rgba(16,185,129,0.4)' }} />
-            <span className="text-[10px] text-gray-400 font-light tracking-tight">{homeTeam}</span>
+            <span className="text-[10px] text-gray-400 font-normal tracking-tight">{homeTeam}</span>
           </div>
           <span className="text-[22px] font-semibold text-emerald-500 mono-time leading-none ml-4">
             <NumberTicker value={`${home}`} delay={400} />
-            <span className="text-[13px] font-light text-emerald-400/50 ml-0.5">%</span>
+            <span className="text-[13px] font-normal text-emerald-400/50 ml-0.5">%</span>
           </span>
         </div>
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <div className="w-2 h-2 rounded-full bg-sky-500/60" style={{ boxShadow: '0 0 4px rgba(56,189,248,0.4)' }} />
-            <span className="text-[10px] text-gray-400 font-light tracking-tight">{awayTeam}</span>
+            <span className="text-[10px] text-gray-400 font-normal tracking-tight">{awayTeam}</span>
           </div>
           <span className="text-[22px] font-semibold text-sky-500 mono-time leading-none ml-4">
             <NumberTicker value={`${away}`} delay={600} />
-            <span className="text-[13px] font-light text-sky-400/50 ml-0.5">%</span>
+            <span className="text-[13px] font-normal text-sky-400/50 ml-0.5">%</span>
           </span>
         </div>
       </div>
@@ -812,6 +1111,7 @@ export default function MatchDetail() {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [beamProgress, setBeamProgress] = useState(0.1);
   const [expandedH2H, setExpandedH2H] = useState<number | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -847,7 +1147,7 @@ export default function MatchDetail() {
   if (!match) {
     return (
       <div className="flex flex-col h-full items-center justify-center bg-[#FAFBFC]">
-        <p className="text-gray-300 text-[14px] font-light tracking-wide">无比赛数据</p>
+        <p className="text-gray-300 text-[14px] font-normal tracking-wide">无比赛数据</p>
         <button onClick={() => navigate('/schedule')} className="mt-4 text-emerald-500 text-[13px] font-medium tracking-wide">返回赛程</button>
       </div>
     );
@@ -940,7 +1240,7 @@ export default function MatchDetail() {
         <div className="px-5 pt-5 pb-4">
           <div className="flex items-center justify-between">
             {/* Home */}
-            <div className="flex flex-col items-center gap-1.5 w-[85px]">
+            <div className="flex flex-col items-center gap-1.5 w-[85px] cursor-pointer active:scale-95 transition-transform" onClick={() => setSelectedTeam(match.home)}>
               <TeamBadge name={match.home} size={52} />
               <span className="text-[13px] font-semibold text-gray-800 text-center leading-tight tracking-tight">{match.home}</span>
             </div>
@@ -992,7 +1292,7 @@ export default function MatchDetail() {
             </div>
 
             {/* Away */}
-            <div className="flex flex-col items-center gap-1.5 w-[85px]">
+            <div className="flex flex-col items-center gap-1.5 w-[85px] cursor-pointer active:scale-95 transition-transform" onClick={() => setSelectedTeam(match.away)}>
               <TeamBadge name={match.away} size={52} />
               <span className="text-[13px] font-semibold text-gray-800 text-center leading-tight tracking-tight">{match.away}</span>
             </div>
@@ -1105,7 +1405,7 @@ export default function MatchDetail() {
                     </div>
                     <span className="text-[9px] text-amber-400/80 font-medium tracking-[0.14em] uppercase">FORETELL 策略建议</span>
                   </div>
-                  <div className="text-[13px] leading-[2] text-gray-400 font-light tracking-wide">
+                  <div className="text-[13px] leading-[2] text-gray-400 font-normal tracking-wide">
                     <TypewriterText
                       text={data.strategyText}
                       delay={300}
@@ -1213,10 +1513,10 @@ export default function MatchDetail() {
                         className={cn(
                           'absolute -left-6 top-5 w-[15px] h-[15px] rounded-full flex items-center justify-center z-10',
                         )}
-                        initial={{ scale: 0, opacity: 0 }}
+                        initial={{ scale: 0.8, opacity: 0.6 }}
                         animate={{
-                          scale: isReached ? 1 : 0.5,
-                          opacity: isReached ? 1 : 0.3,
+                          scale: isReached ? 1 : 0.8,
+                          opacity: isReached ? 1 : 0.6,
                         }}
                         transition={{ duration: 0.4, delay: i * 0.1, type: 'spring', stiffness: 300 }}
                       >
@@ -1233,10 +1533,10 @@ export default function MatchDetail() {
 
                       {/* Match card — frosted glass with hover border gradient */}
                       <motion.div
-                        initial={{ opacity: 0, x: 24 }}
+                        initial={{ opacity: 0.7, x: 12 }}
                         animate={{
-                          opacity: isReached ? 1 : 0.15,
-                          x: isReached ? 0 : 24,
+                          opacity: isReached ? 1 : 0.7,
+                          x: isReached ? 0 : 12,
                         }}
                         transition={{ duration: 0.5, delay: i * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
                         onClick={() => setExpandedH2H(isExpanded ? null : i)}
@@ -1252,13 +1552,13 @@ export default function MatchDetail() {
                           {/* Top row: Score + Date */}
                           <div className="flex items-start justify-between mb-1.5">
                             <span className="text-[13px] font-semibold text-gray-800 tracking-tight leading-snug">{m.score}</span>
-                            <span className="text-[9px] text-gray-300 font-light tracking-[0.1em] mono-time uppercase shrink-0 ml-3 mt-0.5">{m.date}</span>
+                            <span className="text-[9px] text-gray-300 font-normal tracking-[0.1em] mono-time uppercase shrink-0 ml-3 mt-0.5">{m.date}</span>
                           </div>
 
                           {/* League + Quick stat */}
                           <div className="flex items-center gap-2">
                             <span className="text-[9px] text-gray-300 font-medium tracking-[0.08em] bg-gray-100/40 px-2 py-0.5 rounded-full">{m.league}</span>
-                            <span className="text-[9px] text-gray-400 font-light tracking-tight">{m.stat}</span>
+                            <span className="text-[9px] text-gray-400 font-normal tracking-tight">{m.stat}</span>
                           </div>
 
                           {/* Expanded detail — TextRevealCard logic */}
@@ -1334,7 +1634,7 @@ export default function MatchDetail() {
                     <span className="text-[11px] font-semibold text-emerald-500 mono-time">
                       {data.h2h.filter(m => m.result === 'home').length}胜
                     </span>
-                    <span className="text-[11px] font-light text-gray-300 mono-time">
+                    <span className="text-[11px] font-normal text-gray-300 mono-time">
                       {data.h2h.filter(m => m.result === 'draw').length}平
                     </span>
                     <span className="text-[11px] font-semibold text-red-400 mono-time">
@@ -1427,7 +1727,7 @@ export default function MatchDetail() {
                           {item.type === 'injury' ? '伤病' : item.type === 'form' ? '状态' : item.type === 'tactic' ? '战术' : '场外'}
                         </span>
                       </div>
-                      <p className="text-[12px] text-gray-600 leading-[1.8] font-light tracking-wide">{item.text}</p>
+                      <p className="text-[12px] text-gray-600 leading-[1.8] font-normal tracking-wide">{item.text}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -1441,7 +1741,7 @@ export default function MatchDetail() {
                     <Shield size={13} strokeWidth={1.8} className="text-amber-500/70" />
                     <span className="text-[10px] text-amber-600/70 font-medium tracking-[0.1em]">FORETELL 情报评级</span>
                   </div>
-                  <p className="text-[12px] text-amber-800/70 leading-[1.8] font-light tracking-wide">
+                  <p className="text-[12px] text-amber-800/70 leading-[1.8] font-normal tracking-wide">
                     综合情报分析，本场比赛<span className="font-medium text-amber-900/80">利好{match.home}</span>。关键球员伤情需赛前关注，建议结合最终首发名单调整策略。
                   </p>
                 </div>
@@ -1450,6 +1750,13 @@ export default function MatchDetail() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ═══ Team Detail Modal ═══ */}
+      <AnimatePresence>
+        {selectedTeam && (
+          <TeamDetailModal team={selectedTeam} onClose={() => setSelectedTeam(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
