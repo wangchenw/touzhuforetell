@@ -185,12 +185,12 @@ function TeamDetailModal({ team, onClose }: { team: string; onClose: () => void 
               <TeamBadge name={team} size={44} />
               <div>
                 <h2 className="text-[18px] font-bold text-gray-900 tracking-tight">{team}</h2>
-                <p className="text-[11px] text-gray-400 font-medium tracking-wide mt-0.5">
+                <p className="text-[11px] text-gray-500 font-medium tracking-wide mt-0.5">
                   {season.wins}胜 {season.draws}平 {season.losses}负 · 胜率 {winRate}%
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/60 backdrop-blur-xl border border-white/30 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/60 backdrop-blur-xl border border-white/30 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors">
               <X size={16} strokeWidth={2} />
             </button>
           </div>
@@ -223,14 +223,14 @@ function TeamDetailModal({ team, onClose }: { team: string; onClose: () => void 
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-[15px] font-semibold text-gray-800 tracking-tight block">{detail.coach}</span>
-                <span className="text-[11px] text-gray-400 font-normal tracking-wide block mt-0.5">{detail.coachYears}</span>
+                <span className="text-[11px] text-gray-500 font-normal tracking-wide block mt-0.5">{detail.coachYears}</span>
                 <span className="text-[11px] font-medium tracking-wide mt-1 block" style={{ color: primary }}>{detail.coachStyle}</span>
               </div>
             </div>
 
             {/* Formation */}
             <div className="flex items-center gap-2 mb-3">
-              <Swords size={13} strokeWidth={1.8} className="text-gray-400" />
+              <Swords size={13} strokeWidth={1.8} className="text-gray-500" />
               <span className="text-[10px] text-gray-300 font-medium tracking-[0.1em] uppercase">常用阵型</span>
               <span className="text-[13px] font-semibold text-gray-700 ml-auto tracking-tight">{detail.formation}</span>
             </div>
@@ -265,7 +265,7 @@ function TeamDetailModal({ team, onClose }: { team: string; onClose: () => void 
                 <div key={i} className="text-center rounded-2xl bg-gray-50/60 py-3">
                   <span className="text-[16px] block mb-0.5">{s.icon}</span>
                   <span className="text-[16px] font-bold text-gray-800 mono-time block">{s.val}</span>
-                  <span className="text-[9px] text-gray-400 font-medium tracking-[0.1em] uppercase">{s.label}</span>
+                  <span className="text-[9px] text-gray-500 font-medium tracking-[0.1em] uppercase">{s.label}</span>
                 </div>
               ))}
             </div>
@@ -278,7 +278,7 @@ function TeamDetailModal({ team, onClose }: { team: string; onClose: () => void 
             </div>
             <div className="flex justify-between mt-1.5">
               <span className="text-[9px] text-emerald-500 font-medium">{season.wins}胜</span>
-              <span className="text-[9px] text-gray-400 font-medium">{season.draws}平</span>
+              <span className="text-[9px] text-gray-500 font-medium">{season.draws}平</span>
               <span className="text-[9px] text-red-400 font-medium">{season.losses}负</span>
             </div>
           </motion.div>
@@ -460,7 +460,7 @@ function MagneticTab({
       whileTap={{ scale: 0.96 }}
       className={cn(
         'relative flex-1 py-2 text-[12px] font-medium rounded-[14px] transition-colors duration-300 flex items-center justify-center gap-1 tracking-[0.04em]',
-        active ? 'text-gray-900' : 'text-gray-400'
+        active ? 'text-gray-900' : 'text-gray-500'
        )}
     >
       {children}
@@ -703,12 +703,12 @@ function VisualPitch({
       <div className="flex items-center justify-center gap-6 mt-3">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/20 border-[0.5px] border-emerald-500/30" />
-          <span className="text-[10px] text-gray-400 tracking-tight">{homeTeam}</span>
+          <span className="text-[10px] text-gray-500 tracking-tight">{homeTeam}</span>
         </div>
         <span className="text-[8px] text-gray-200">|</span>
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-blue-500/20 border-[0.5px] border-blue-500/30" />
-          <span className="text-[10px] text-gray-400 tracking-tight">{awayTeam}</span>
+          <span className="text-[10px] text-gray-500 tracking-tight">{awayTeam}</span>
         </div>
       </div>
     </motion.div>
@@ -750,7 +750,7 @@ function LiquidFillProbBar({ home, draw, away, homeTeam, awayTeam }: { home: num
       {/* Large hero numbers row */}
       <div className="flex items-end justify-between mb-5">
         <div className="flex flex-col items-start">
-          <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase mb-1">主胜</span>
+          <span className="text-[11px] text-gray-400 font-medium tracking-[0.16em] uppercase mb-1">主胜</span>
           <span className="text-[28px] font-semibold text-emerald-500 mono-time leading-none tracking-tighter">
             <NumberTicker value={`${home}`} delay={0} />
             <span className="text-[16px] font-normal text-emerald-400/60 ml-0.5">%</span>
@@ -758,14 +758,14 @@ function LiquidFillProbBar({ home, draw, away, homeTeam, awayTeam }: { home: num
           <span className="text-[10px] text-gray-300 font-normal mt-1 tracking-tight">{homeTeam}</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase mb-1">平局</span>
-          <span className="text-[20px] font-normal text-gray-400 mono-time leading-none tracking-tighter">
+          <span className="text-[11px] text-gray-400 font-medium tracking-[0.16em] uppercase mb-1">平局</span>
+          <span className="text-[20px] font-normal text-gray-500 mono-time leading-none tracking-tighter">
             <NumberTicker value={`${draw}`} delay={200} />
             <span className="text-[12px] font-normal text-gray-300/50 ml-0.5">%</span>
           </span>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase mb-1">客胜</span>
+          <span className="text-[11px] text-gray-400 font-medium tracking-[0.16em] uppercase mb-1">客胜</span>
           <span className="text-[28px] font-semibold text-sky-500 mono-time leading-none tracking-tighter">
             <NumberTicker value={`${away}`} delay={100} />
             <span className="text-[16px] font-normal text-sky-400/60 ml-0.5">%</span>
@@ -917,7 +917,7 @@ function PossessionDonut({ home, away, homeTeam, awayTeam }: { home: number; awa
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <div className="w-2 h-2 rounded-full bg-emerald-500/60" style={{ boxShadow: '0 0 4px rgba(16,185,129,0.4)' }} />
-            <span className="text-[10px] text-gray-400 font-normal tracking-tight">{homeTeam}</span>
+            <span className="text-[10px] text-gray-500 font-normal tracking-tight">{homeTeam}</span>
           </div>
           <span className="text-[22px] font-semibold text-emerald-500 mono-time leading-none ml-4">
             <NumberTicker value={`${home}`} delay={400} />
@@ -927,7 +927,7 @@ function PossessionDonut({ home, away, homeTeam, awayTeam }: { home: number; awa
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <div className="w-2 h-2 rounded-full bg-sky-500/60" style={{ boxShadow: '0 0 4px rgba(56,189,248,0.4)' }} />
-            <span className="text-[10px] text-gray-400 font-normal tracking-tight">{awayTeam}</span>
+            <span className="text-[10px] text-gray-500 font-normal tracking-tight">{awayTeam}</span>
           </div>
           <span className="text-[22px] font-semibold text-sky-500 mono-time leading-none ml-4">
             <NumberTicker value={`${away}`} delay={600} />
@@ -958,20 +958,20 @@ function StatSparkRow({ label, home, away, index }: { label: string; home: strin
     >
       {/* Label — centered, caps-style */}
       <div className="text-center mb-3">
-        <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase">{label}</span>
+        <span className="text-[11px] text-gray-400 font-medium tracking-[0.16em] uppercase">{label}</span>
       </div>
 
       {/* Sparkline bars + numbers */}
       <div className="flex items-center gap-3">
         {/* Home number */}
-        <span className="text-[14px] font-semibold text-emerald-500 w-[52px] text-right mono-time leading-none">
+        <span className="text-[18px] font-semibold text-emerald-500 w-[60px] text-right mono-time leading-none">
           <NumberTicker value={home} delay={delay * 1000} />
         </span>
 
         {/* Dual sparkline with glow point */}
         <div className="flex-1 flex flex-col gap-1.5">
           {/* Home bar */}
-          <div className="relative h-[3px] rounded-full bg-gray-100/40">
+          <div className="relative h-[5px] rounded-full bg-gray-100/40">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${homeW}%` }}
@@ -992,7 +992,7 @@ function StatSparkRow({ label, home, away, index }: { label: string; home: strin
             )}
           </div>
           {/* Away bar */}
-          <div className="relative h-[3px] rounded-full bg-gray-100/40">
+          <div className="relative h-[5px] rounded-full bg-gray-100/40">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${awayW}%` }}
@@ -1015,7 +1015,7 @@ function StatSparkRow({ label, home, away, index }: { label: string; home: strin
         </div>
 
         {/* Away number */}
-        <span className="text-[14px] font-semibold text-sky-500 w-[52px] text-left mono-time leading-none">
+        <span className="text-[18px] font-semibold text-sky-500 w-[60px] text-left mono-time leading-none">
           <NumberTicker value={away} delay={(delay + 0.05) * 1000} />
         </span>
       </div>
@@ -1147,7 +1147,7 @@ export default function MatchDetail() {
   if (!match) {
     return (
       <div className="flex flex-col h-full items-center justify-center bg-[#FAFBFC]">
-        <p className="text-gray-300 text-[14px] font-normal tracking-wide">无比赛数据</p>
+        <p className="text-gray-300 text-[18px] font-normal tracking-wide">无比赛数据</p>
         <button onClick={() => navigate('/schedule')} className="mt-4 text-emerald-500 text-[13px] font-medium tracking-wide">返回赛程</button>
       </div>
     );
@@ -1216,7 +1216,7 @@ export default function MatchDetail() {
       >
         <button
           onClick={() => navigate(-1)}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-500 hover:text-gray-700 transition-colors"
         >
           <ChevronLeft size={18} strokeWidth={2} />
         </button>
@@ -1301,7 +1301,7 @@ export default function MatchDetail() {
           {/* Meta */}
           <div className="flex items-center justify-center gap-3 mt-3">
             <span className="text-[10px] text-gray-300 tracking-[0.08em]">{match.league}</span>
-            <span className="w-[3px] h-[3px] rounded-full bg-gray-200" />
+            <span className="w-[3px] h-[5px] rounded-full bg-gray-200" />
             <span className="text-[10px] text-gray-300 tracking-[0.08em] mono-time">{match.time}</span>
           </div>
         </div>
@@ -1405,7 +1405,7 @@ export default function MatchDetail() {
                     </div>
                     <span className="text-[9px] text-amber-400/80 font-medium tracking-[0.14em] uppercase">FORETELL 策略建议</span>
                   </div>
-                  <div className="text-[13px] leading-[2] text-gray-400 font-normal tracking-wide">
+                  <div className="text-[13px] leading-[2] text-gray-500 font-normal tracking-wide">
                     <TypewriterText
                       text={data.strategyText}
                       delay={300}
@@ -1448,7 +1448,7 @@ export default function MatchDetail() {
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.08)]'
                             : r === 'away'
                             ? 'bg-red-400/10 border-red-400/20 text-red-400 shadow-[0_4px_16px_rgba(248,113,113,0.08)]'
-                            : 'bg-gray-200/20 border-gray-200/30 text-gray-400 shadow-[0_4px_16px_rgba(0,0,0,0.02)]'
+                            : 'bg-gray-200/20 border-gray-200/30 text-gray-500 shadow-[0_4px_16px_rgba(0,0,0,0.02)]'
                         )}
                         style={{ perspective: '600px', transformStyle: 'preserve-3d' }}
                         whileTap={{ scale: 0.93, rotateX: 5 }}
@@ -1462,15 +1462,15 @@ export default function MatchDetail() {
                 <div className="flex items-center justify-center gap-4 mt-3">
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" style={{ boxShadow: '0 0 4px rgba(16,185,129,0.5)' }} />
-                    <span className="text-[9px] text-gray-400 tracking-tight">{match.home}胜</span>
+                    <span className="text-[9px] text-gray-500 tracking-tight">{match.home}胜</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                    <span className="text-[9px] text-gray-400 tracking-tight">平</span>
+                    <span className="text-[9px] text-gray-500 tracking-tight">平</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-400" style={{ boxShadow: '0 0 4px rgba(248,113,113,0.5)' }} />
-                    <span className="text-[9px] text-gray-400 tracking-tight">{match.away}胜</span>
+                    <span className="text-[9px] text-gray-500 tracking-tight">{match.away}胜</span>
                   </div>
                 </div>
               </div>
@@ -1552,13 +1552,13 @@ export default function MatchDetail() {
                           {/* Top row: Score + Date */}
                           <div className="flex items-start justify-between mb-1.5">
                             <span className="text-[13px] font-semibold text-gray-800 tracking-tight leading-snug">{m.score}</span>
-                            <span className="text-[9px] text-gray-300 font-normal tracking-[0.1em] mono-time uppercase shrink-0 ml-3 mt-0.5">{m.date}</span>
+                            <span className="text-[11px] text-gray-400 font-normal tracking-[0.1em] mono-time uppercase shrink-0 ml-3 mt-0.5">{m.date}</span>
                           </div>
 
                           {/* League + Quick stat */}
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] text-gray-300 font-medium tracking-[0.08em] bg-gray-100/40 px-2 py-0.5 rounded-full">{m.league}</span>
-                            <span className="text-[9px] text-gray-400 font-normal tracking-tight">{m.stat}</span>
+                            <span className="text-[11px] text-gray-400 font-medium tracking-[0.08em] bg-gray-100/40 px-2 py-0.5 rounded-full">{m.league}</span>
+                            <span className="text-[9px] text-gray-500 font-normal tracking-tight">{m.stat}</span>
                           </div>
 
                           {/* Expanded detail — TextRevealCard logic */}
@@ -1597,7 +1597,7 @@ export default function MatchDetail() {
                                       'text-[9px] font-medium px-3 py-1 rounded-full tracking-[0.08em]',
                                       r === 'home' ? 'bg-emerald-500/8 text-emerald-500 border-[0.5px] border-emerald-500/15'
                                         : r === 'away' ? 'bg-red-400/8 text-red-400 border-[0.5px] border-red-400/15'
-                                        : 'bg-gray-200/30 text-gray-400 border-[0.5px] border-gray-200/30'
+                                        : 'bg-gray-200/30 text-gray-500 border-[0.5px] border-gray-200/30'
                                     )}>
                                       {r === 'home' ? `${match.home} 获胜` : r === 'away' ? `${match.away} 获胜` : '双方战平'}
                                     </span>
@@ -1629,7 +1629,7 @@ export default function MatchDetail() {
                 className="mt-3 rounded-2xl bg-white/40 backdrop-blur-[20px] border-[0.5px] border-white/30 p-4"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-gray-300 font-medium tracking-[0.16em] uppercase">总战绩</span>
+                  <span className="text-[11px] text-gray-400 font-medium tracking-[0.16em] uppercase">总战绩</span>
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-semibold text-emerald-500 mono-time">
                       {data.h2h.filter(m => m.result === 'home').length}胜
@@ -1723,7 +1723,7 @@ export default function MatchDetail() {
                             {item.team}
                           </span>
                         )}
-                        <span className="text-[9px] text-gray-300 font-medium tracking-[0.08em]">
+                        <span className="text-[11px] text-gray-400 font-medium tracking-[0.08em]">
                           {item.type === 'injury' ? '伤病' : item.type === 'form' ? '状态' : item.type === 'tactic' ? '战术' : '场外'}
                         </span>
                       </div>

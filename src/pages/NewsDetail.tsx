@@ -113,7 +113,7 @@ export default function NewsDetail() {
   if (!news) {
     return (
       <div className="flex flex-col h-full items-center justify-center bg-[#F7F8FA]">
-        <p className="text-gray-400 text-[15px]">无资讯数据</p>
+        <p className="text-gray-500 text-[15px]">无资讯数据</p>
         <button onClick={() => navigate('/news')} className="mt-4 text-emerald-600 text-[14px] font-bold">返回资讯</button>
       </div>
     );
@@ -132,7 +132,7 @@ export default function NewsDetail() {
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-[16px] font-bold text-gray-900">资讯详情</h1>
-        <button className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
+        <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
           <Share2 size={18} />
         </button>
       </header>
@@ -201,13 +201,13 @@ export default function NewsDetail() {
                       <path d="M8 52 L28 38 L44 48 L58 32 L72 44 V58 C72 61.3137 69.3137 64 66 64 H14 C10.6863 64 8 61.3137 8 58 V52Z" fill="#E5E7EB" />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[12px] text-gray-400 font-medium bg-white/80 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                      <span className="text-[12px] text-gray-500 font-medium bg-white/80 px-3 py-1.5 rounded-full backdrop-blur-sm">
                         {news.source} 配图
                       </span>
                     </div>
                   </div>
                   <div className="bg-white px-3 py-2">
-                    <p className="text-[11px] text-gray-400 font-medium">{content.image.caption}</p>
+                    <p className="text-[11px] text-gray-500 font-medium">{content.image.caption}</p>
                   </div>
                 </motion.div>
               )}
@@ -216,7 +216,7 @@ export default function NewsDetail() {
 
           {/* Source & disclaimer */}
           <div className="border-t border-gray-100 pt-4 mt-2">
-            <p className="text-[11px] text-gray-400 leading-relaxed">
+            <p className="text-[11px] text-gray-500 leading-relaxed">
               来源：{news.source} · 以上内容仅供参考，不构成投注建议。数据分析由 Foretell AI 模型提供。
             </p>
           </div>
@@ -234,7 +234,7 @@ export default function NewsDetail() {
               { icon: <Bookmark size={18} />, label: '收藏', count: '84' },
               { icon: <Share2 size={18} />, label: '分享', count: '' },
             ].map((action, i) => (
-              <button key={i} className="flex flex-col items-center gap-1 text-gray-400 hover:text-emerald-600 transition-colors active:scale-95">
+              <button key={i} className="flex flex-col items-center gap-1 text-gray-500 hover:text-emerald-600 transition-colors active:scale-95">
                 {action.icon}
                 <span className="text-[10px] font-medium">{action.count || action.label}</span>
               </button>

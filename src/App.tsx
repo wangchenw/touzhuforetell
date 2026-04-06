@@ -3,11 +3,7 @@ import Layout from './components/Layout';
 import Assistant from './pages/Assistant';
 import Bookkeeping from './pages/Bookkeeping';
 import Profile from './pages/Profile';
-import AddBet from './pages/AddBet';
-import Schedule from './pages/Schedule';
-import News from './pages/News';
-import MatchDetail from './pages/MatchDetail';
-import NewsDetail from './pages/NewsDetail';
+import RecordBet from './pages/RecordBet';
 
 export default function App() {
   return (
@@ -17,14 +13,10 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<Assistant />} />
-              <Route path="schedule" element={<Schedule />} />
-              <Route path="news" element={<News />} />
               <Route path="bookkeeping" element={<Bookkeeping />} />
               <Route path="profile" element={<Profile />} />
             </Route>
-            <Route path="/add-bet" element={<AddBet />} />
-            <Route path="/match/:id" element={<MatchDetail />} />
-            <Route path="/news/:id" element={<NewsDetail />} />
+            <Route path="/record-bet" element={<RecordBet />} />
           </Routes>
         </BrowserRouter>
       </div>

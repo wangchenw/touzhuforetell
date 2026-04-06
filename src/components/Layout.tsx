@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Aperture, Trophy, MessageCircle, Wallet } from 'lucide-react';
+import { Aperture, Wallet, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Layout() {
@@ -12,9 +12,8 @@ export default function Layout() {
       <nav className="relative w-full bg-white/80 backdrop-blur-2xl border-t border-[#E5E5EA]/40 flex justify-around items-center h-[72px] px-4 z-50 shrink-0">
         {[
           { to: '/', icon: Aperture, label: 'Foretell' },
-          { to: '/schedule', icon: Trophy, label: '赛程' },
-          { to: '/news', icon: MessageCircle, label: '资讯' },
-          { to: '/bookkeeping', icon: Wallet, label: '投注' },
+          { to: '/bookkeeping', icon: Wallet, label: '记账本' },
+          { to: '/profile', icon: User, label: '我的' },
         ].map((item) => (
           <NavLink
             key={item.to}

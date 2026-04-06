@@ -82,7 +82,7 @@ function SportSegment({
           whileTap={{ scale: 0.95 }}
           className={cn(
             'relative z-10 flex-1 py-2.5 text-[13px] font-medium rounded-[14px] transition-colors duration-300 flex items-center justify-center gap-1.5 tracking-[0.04em]',
-            value === opt.id ? opt.activeText : 'text-gray-400'
+            value === opt.id ? opt.activeText : 'text-gray-500'
           )}
         >
           {/* SF Symbols style sport icon */}
@@ -217,7 +217,7 @@ export default function AddBet() {
       <header className="relative z-20 px-4 py-3 flex items-center shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-500 hover:text-gray-700 transition-colors"
         >
           <ChevronLeft size={18} strokeWidth={2} />
         </button>
@@ -248,7 +248,7 @@ export default function AddBet() {
               <span className="text-[16px] font-semibold text-gray-800 tracking-tight block leading-relaxed">
                 拍照智能识别
               </span>
-              <span className="text-[11px] text-gray-400/70 font-normal tracking-wide block mt-1 leading-[1.7]">
+              <span className="text-[11px] text-gray-500/70 font-normal tracking-wide block mt-1 leading-[1.7]">
                 支持竞彩网实体票一键导入
               </span>
             </div>

@@ -7,9 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'motion/react';
 import {
-  loadPreferences, savePreferences, UserPreferences,
+  loadPreferences, normalizePreferences, savePreferences,
   LEAGUE_OPTIONS, SPORT_OPTIONS, EVENT_OPTIONS
 } from '@/lib/preferences';
+import type { UserPreferences } from '@/lib/preferences';
+import { getPreferences as fetchPreferences, updatePreferences as persistPreferences } from '@/lib/api';
 
 // ─── Glass Orb Avatar ───
 function GlassOrb({
@@ -136,7 +138,7 @@ function SegmentSlider({
           whileTap={{ scale: 0.95 }}
           className={cn(
             'relative z-10 flex-1 py-2 text-[12px] font-medium rounded-[14px] transition-colors duration-300 tracking-[0.04em]',
-            value === opt.id ? 'text-gray-900' : 'text-gray-400'
+            value === opt.id ? 'text-gray-900' : 'text-gray-500'
           )}
         >
           {opt.label}
@@ -209,27 +211,66 @@ export default function Profile() {
   const [prefs, setPrefs] = useState<UserPreferences>(() => loadPreferences());
   const [saved, setSaved] = useState(false);
   const [showSparkles, setShowSparkles] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    (async () => {
+      try {
+        const remotePreferences = await fetchPreferences();
+        if (!isActive) return;
+        const normalized = normalizePreferences(remotePreferences);
+        setPrefs(normalized);
+        savePreferences(normalized);
+      } catch {
+        // fall back to locally cached preferences
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const updatePrefs = (patch: Partial<UserPreferences>) => {
-    setPrefs(prev => ({ ...prev, ...patch }));
+    setPrefs(prev => normalizePreferences({ ...prev, ...patch }));
     setSaved(false);
   };
 
-  const handleSave = () => {
-    savePreferences(prefs);
-    setSaved(true);
-    setShowSparkles(true);
-    setTimeout(() => setShowSparkles(false), 1000);
-    setTimeout(() => navigate(-1), 900);
+  const handleSave = async () => {
+    setIsSaving(true);
+
+    try {
+      const persistedPreferences = await persistPreferences(prefs);
+      const normalized = normalizePreferences(persistedPreferences);
+      setPrefs(normalized);
+      savePreferences(normalized);
+      setSaved(true);
+      setShowSparkles(true);
+      setTimeout(() => setShowSparkles(false), 1000);
+      setTimeout(() => navigate(-1), 900);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '保存失败，请稍后重试';
+      alert(message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleResetOnboarding = () => {
+  const handleResetOnboarding = async () => {
     const reset = { ...prefs, isOnboarded: false };
+    setPrefs(reset);
     savePreferences(reset);
+    try {
+      await persistPreferences(reset);
+    } catch {
+      // keep local reset state so the user can continue onboarding
+    }
     navigate('/');
   };
 
-  const toggleSport = (sport: string) => {
+  const toggleSport = (sport: UserPreferences['sports'][number]) => {
     const next = prefs.sports.includes(sport)
       ? prefs.sports.filter(s => s !== sport)
       : [...prefs.sports, sport];
@@ -266,7 +307,7 @@ export default function Profile() {
       <header className="relative z-20 px-4 py-3 flex justify-between items-center shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-500 hover:text-gray-700 transition-colors"
         >
           <ChevronLeft size={18} strokeWidth={2} />
         </button>
@@ -318,7 +359,7 @@ export default function Profile() {
           {/* ── Risk Strategy — Full Width (Personality Segment) ── */}
           <div className="col-span-2 rounded-3xl bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Shield size={13} strokeWidth={1.8} className="text-gray-400" />
+              <Shield size={13} strokeWidth={1.8} className="text-gray-500" />
               <span className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase">风险策略</span>
             </div>
             <SegmentSlider
@@ -357,7 +398,7 @@ export default function Profile() {
                       'w-full py-2 px-3 text-[12px] font-medium rounded-xl border-[0.5px] transition-all flex items-center justify-between tracking-wide',
                       selected
                         ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-600'
-                        : 'bg-white/30 border-white/30 text-gray-400'
+                        : 'bg-white/30 border-white/30 text-gray-500'
                     )}
                   >
                     {s.label}
@@ -377,7 +418,7 @@ export default function Profile() {
                 onClick={() => navigate('/bookkeeping')}
                 className="w-full flex items-center gap-2 py-2 px-3 rounded-xl bg-white/30 border-[0.5px] border-white/30 text-gray-500 hover:border-emerald-500/10 transition-all"
               >
-                <Wallet size={13} strokeWidth={1.8} className="text-gray-400" />
+                <Wallet size={13} strokeWidth={1.8} className="text-gray-500" />
                 <span className="text-[12px] font-medium tracking-wide flex-1 text-left">记账本</span>
                 <ChevronRight size={13} className="text-gray-300" />
               </motion.button>
@@ -386,7 +427,7 @@ export default function Profile() {
                 onClick={handleResetOnboarding}
                 className="w-full flex items-center gap-2 py-2 px-3 rounded-xl bg-white/30 border-[0.5px] border-white/30 text-gray-500 hover:border-amber-500/10 transition-all"
               >
-                <RotateCcw size={13} strokeWidth={1.8} className="text-gray-400" />
+                <RotateCcw size={13} strokeWidth={1.8} className="text-gray-500" />
                 <span className="text-[12px] font-medium tracking-wide flex-1 text-left">重新定制</span>
                 <ChevronRight size={13} className="text-gray-300" />
               </motion.button>
@@ -396,7 +437,7 @@ export default function Profile() {
           {/* ── Leagues — Full Width ── */}
           <div className="col-span-2 rounded-3xl bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 shadow-[0_2px_20px_rgba(0,0,0,0.02)] p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Target size={13} strokeWidth={1.8} className="text-gray-400" />
+              <Target size={13} strokeWidth={1.8} className="text-gray-500" />
               <span className="text-[10px] text-gray-300 font-medium tracking-[0.14em] uppercase">兴趣赛事</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -411,7 +452,7 @@ export default function Profile() {
                       'px-3 py-1.5 text-[11px] font-medium rounded-xl border-[0.5px] transition-all flex items-center gap-1 tracking-wide',
                       isSelected
                         ? 'bg-gray-900/85 backdrop-blur-xl border-gray-800 text-white'
-                        : 'bg-white/30 border-white/30 text-gray-400 hover:text-gray-600'
+                        : 'bg-white/30 border-white/30 text-gray-500 hover:text-gray-600'
                     )}
                   >
                     {e.label}
@@ -438,7 +479,7 @@ export default function Profile() {
             </div>
             <input
               type="time"
-              value={prefs.morningTime}
+              value={prefs.morningTime || ''}
               onChange={(e) => updatePrefs({ morningTime: e.target.value })}
               className="text-[18px] font-normal text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
             />
@@ -460,7 +501,7 @@ export default function Profile() {
                 <span className="text-[9px] text-gray-300/50 tracking-[0.1em] uppercase block mb-0.5">早场</span>
                 <input
                   type="time"
-                  value={prefs.strategyTimes[0]}
+                  value={prefs.strategyTimes?.[0] || ''}
                   onChange={(e) => updatePrefs({ strategyTimes: [e.target.value, prefs.strategyTimes[1]] })}
                   className="text-[14px] font-normal text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
                 />
@@ -469,7 +510,7 @@ export default function Profile() {
                 <span className="text-[9px] text-gray-300/50 tracking-[0.1em] uppercase block mb-0.5">晚场</span>
                 <input
                   type="time"
-                  value={prefs.strategyTimes[1]}
+                  value={prefs.strategyTimes?.[1] || ''}
                   onChange={(e) => updatePrefs({ strategyTimes: [prefs.strategyTimes[0], e.target.value] })}
                   className="text-[14px] font-normal text-gray-800 bg-transparent border-none outline-none w-full mono-time tracking-tight focus:ring-0"
                 />
@@ -548,7 +589,7 @@ export default function Profile() {
                 : 'bg-gray-900/90 backdrop-blur-xl text-white shadow-[0_4px_20px_rgba(0,0,0,0.08)]'
             )}
           >
-            {saved ? '已保存' : '应用更改'}
+            {isSaving ? '保存中...' : saved ? '已保存' : '应用更改'}
           </motion.button>
         </div>
       </div>

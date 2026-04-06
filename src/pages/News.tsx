@@ -61,7 +61,7 @@ export default function News() {
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md px-5 py-3 flex justify-between items-center sticky top-0 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)] shrink-0">
         <h1 className="text-xl font-bold text-gray-900">资讯</h1>
-        <button onClick={() => navigate('/profile')} className="p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
+        <button onClick={() => navigate('/profile')} className="p-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
           <Settings size={20} />
         </button>
       </header>
@@ -110,7 +110,7 @@ export default function News() {
                 <span className="text-[11px] text-amber-400 font-semibold uppercase tracking-wider">焦点资讯</span>
               </div>
               <h3 className="text-[16px] font-bold leading-snug mb-2">{filtered[0].title}</h3>
-              <p className="text-[13px] text-gray-400 leading-relaxed line-clamp-2">{filtered[0].summary}</p>
+              <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2">{filtered[0].summary}</p>
               <div className="flex items-center justify-between mt-4">
                 <span className="text-[11px] text-gray-500">{filtered[0].source} · {filtered[0].time}</span>
                 <ChevronRight size={16} className="text-gray-500" />
@@ -142,11 +142,11 @@ export default function News() {
                   )}
                 </div>
                 <h3 className="text-[14px] font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2">{item.title}</h3>
-                <p className="text-[12px] text-gray-400 leading-relaxed line-clamp-2">{item.summary}</p>
+                <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2">{item.summary}</p>
                 <div className="flex items-center gap-2 mt-2.5">
-                  <span className="text-[11px] text-gray-400">{item.source}</span>
+                  <span className="text-[11px] text-gray-500">{item.source}</span>
                   <span className="w-0.5 h-0.5 bg-gray-300 rounded-full" />
-                  <span className="text-[11px] text-gray-400 flex items-center gap-0.5">
+                  <span className="text-[11px] text-gray-500 flex items-center gap-0.5">
                     <Clock size={10} />
                     {item.time}
                   </span>

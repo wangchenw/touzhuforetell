@@ -1,85 +1,164 @@
-export interface PushEventSettings {
-  start: boolean;
-  goal: boolean;
-  card: boolean;
-  half: boolean;
-  end: boolean;
-}
+import type { PushEvents, RiskLevel, Sport, UserPreferences } from '@/lib/api';
 
-export interface UserPreferences {
-  name: string;
-  risk: 'conservative' | 'steady' | 'aggressive';
-  sports: string[];
-  leagues: string[];
-  morningTime: string;
-  strategyTimes: [string, string];
-  pushEvents: PushEventSettings;
-  isOnboarded: boolean;
-}
+export type { PushEvents, RiskLevel, Sport, UserPreferences } from '@/lib/api';
+
+type LegacyPushEvents = Partial<PushEvents> & {
+  start?: boolean;
+  card?: boolean;
+  half?: boolean;
+  end?: boolean;
+};
+
+type StoredPreferences = Partial<UserPreferences> & {
+  sports?: string[];
+  leagues?: string[];
+  strategyTimes?: string[];
+  pushEvents?: LegacyPushEvents;
+};
+
+const STORAGE_KEY = 'foretell_preferences';
+
+const VALID_RISKS: RiskLevel[] = ['conservative', 'steady', 'aggressive'];
+const VALID_SPORTS: Sport[] = ['football', 'basketball'];
+const LEGACY_LEAGUE_MAP: Record<string, string> = {
+  premier_league: 'epl',
+  la_liga: 'laliga',
+  serie_a: 'seriea',
+  champions_league: 'ucl',
+};
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
-  name: '小绿',
+  name: '',
   risk: 'steady',
-  sports: ['football'],
-  leagues: ['premier_league', 'nba'],
+  sports: [],
+  leagues: [],
   morningTime: '08:00',
   strategyTimes: ['10:30', '18:00'],
   pushEvents: {
-    start: true,
-    goal: true,
-    card: false,
-    half: true,
-    end: true,
+    goal: false,
+    redCard: false,
+    settle: false,
   },
   isOnboarded: false,
 };
 
-const STORAGE_KEY = 'foretell_preferences';
+function normalizeTime(value: unknown, fallback: string) {
+  if (typeof value === 'string' && /^\d{2}:\d{2}$/.test(value)) {
+    return value;
+  }
+
+  return fallback;
+}
+
+function normalizeStrategyTimes(value: unknown): [string, string] {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_PREFERENCES.strategyTimes];
+  }
+
+  const first = normalizeTime(value[0], DEFAULT_PREFERENCES.strategyTimes[0]);
+  const second = normalizeTime(value[1], DEFAULT_PREFERENCES.strategyTimes[1]);
+  return [first, second];
+}
+
+function normalizeSports(value: unknown): Sport[] {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_PREFERENCES.sports];
+  }
+
+  const sports = value.filter((item): item is Sport => VALID_SPORTS.includes(item as Sport));
+  return Array.from(new Set(sports));
+}
+
+function normalizeLeagues(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_PREFERENCES.leagues];
+  }
+
+  const leagues = value
+    .map((item) => (typeof item === 'string' ? LEGACY_LEAGUE_MAP[item] || item : null))
+    .filter((item): item is string => Boolean(item));
+
+  return Array.from(new Set(leagues));
+}
+
+function normalizePushEvents(value: unknown): PushEvents {
+  const pushEvents = (value && typeof value === 'object' ? value : {}) as LegacyPushEvents;
+
+  return {
+    goal: Boolean(pushEvents.goal),
+    redCard: Boolean(pushEvents.redCard ?? pushEvents.card),
+    settle: Boolean(pushEvents.settle ?? pushEvents.end),
+  };
+}
+
+function normalizeRisk(value: unknown): RiskLevel {
+  if (typeof value === 'string' && VALID_RISKS.includes(value as RiskLevel)) {
+    return value as RiskLevel;
+  }
+
+  return DEFAULT_PREFERENCES.risk;
+}
+
+export function normalizePreferences(raw?: StoredPreferences | null): UserPreferences {
+  return {
+    name: typeof raw?.name === 'string' ? raw.name : DEFAULT_PREFERENCES.name,
+    risk: normalizeRisk(raw?.risk),
+    sports: normalizeSports(raw?.sports),
+    leagues: normalizeLeagues(raw?.leagues),
+    morningTime: normalizeTime(raw?.morningTime, DEFAULT_PREFERENCES.morningTime),
+    strategyTimes: normalizeStrategyTimes(raw?.strategyTimes),
+    pushEvents: normalizePushEvents(raw?.pushEvents),
+    isOnboarded: Boolean(raw?.isOnboarded),
+  };
+}
 
 export function loadPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) };
+      return normalizePreferences(JSON.parse(raw) as StoredPreferences);
     }
   } catch {
     // ignore corrupted data
   }
-  return { ...DEFAULT_PREFERENCES };
+
+  return normalizePreferences();
 }
 
-export function savePreferences(prefs: UserPreferences): void {
+export function savePreferences(preferences: UserPreferences): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizePreferences(preferences)));
   } catch {
     // storage full or unavailable
   }
 }
 
-export const RISK_LABELS: Record<string, string> = {
+export function getDisplayName(preferences: Pick<UserPreferences, 'name'>): string {
+  return preferences.name.trim() || '小绿';
+}
+
+export const RISK_LABELS: Record<RiskLevel, string> = {
   conservative: '保守',
   steady: '稳健',
   aggressive: '激进',
 };
 
 export const LEAGUE_OPTIONS = [
-  { id: 'premier_league', label: '英超' },
-  { id: 'la_liga', label: '西甲' },
-  { id: 'serie_a', label: '意甲' },
-  { id: 'champions_league', label: '欧冠' },
+  { id: 'epl', label: '英超' },
+  { id: 'laliga', label: '西甲' },
+  { id: 'seriea', label: '意甲' },
+  { id: 'ucl', label: '欧冠' },
   { id: 'nba', label: 'NBA' },
   { id: 'cba', label: 'CBA' },
-];
+] as const;
 
 export const SPORT_OPTIONS = [
   { id: 'football', label: '足球' },
   { id: 'basketball', label: '篮球' },
-];
+] as const;
 
 export const EVENT_OPTIONS = [
-  { id: 'start', label: '比赛开赛', desc: '首发阵容与开赛提醒' },
   { id: 'goal', label: '进球提醒', desc: '关键进球实时播报' },
-  { id: 'card', label: '红黄牌', desc: '场上重大判罚事件' },
-  { id: 'half', label: '半场赛果', desc: '半场比分及数据统计' },
-  { id: 'end', label: '全场结束', desc: '最终比分与盈亏结算' },
-];
+  { id: 'redCard', label: '红牌提醒', desc: '重大判罚和人员变化' },
+  { id: 'settle', label: '结算提醒', desc: '比赛结束后同步盈亏结算' },
+] as const;

@@ -1,12 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Plus, Settings, Sparkles, Zap, ShieldCheck, Check, BarChart3 } from 'lucide-react';
+import { Send, Plus, Settings, Sparkles, Zap, ShieldCheck, Check, BarChart3, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { usePcmPlayer } from '@/hooks/usePcmPlayer';
 import {
-  loadPreferences, savePreferences, UserPreferences,
+  getDisplayName, loadPreferences, savePreferences,
   RISK_LABELS, LEAGUE_OPTIONS, SPORT_OPTIONS, EVENT_OPTIONS, DEFAULT_PREFERENCES
 } from '@/lib/preferences';
+import type { UserPreferences } from '@/lib/preferences';
+import {
+  getPreferences as fetchPreferences,
+  mapChatActionToRoute,
+  streamChatMessage,
+  updatePreferences as persistPreferences,
+} from '@/lib/api';
+import type { ChatContextMessage } from '@/lib/api';
 
 // ─── Types ───
 interface Message {
@@ -25,6 +35,61 @@ interface OnboardOption {
   id: string;
   label: string;
   desc?: string;
+}
+
+const DEFAULT_MATCH_ANALYSIS_PROMPT = '分析今晚焦点战';
+
+function MarkdownMessage({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('break-words text-[13px] leading-[1.85] tracking-[0.01em] text-gray-600', className)}>
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => <p className="m-0 leading-[1.85]">{children}</p>,
+          strong: ({ children }) => <strong className="font-semibold text-gray-800">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          ul: ({ children }) => <ul className="my-2.5 list-disc space-y-2 pl-5 [&>li]:pl-1">{children}</ul>,
+          ol: ({ children }) => <ol className="my-2.5 list-decimal space-y-2.5 pl-5 [&>li]:pl-1">{children}</ol>,
+          li: ({ children }) => <li className="leading-[1.85] [&>p]:m-0 [&>p]:inline [&>p]:leading-[1.85]">{children}</li>,
+          blockquote: ({ children }) => (
+            <blockquote className="my-2.5 rounded-2xl border-l-2 border-emerald-300/70 bg-emerald-50/60 px-4 py-3 text-gray-600">
+              {children}
+            </blockquote>
+          ),
+          code: ({ children, className: codeClassName }) => {
+            const isInline = !codeClassName;
+            if (isInline) {
+              return <code className="rounded-md bg-gray-100/90 px-1.5 py-0.5 text-[0.92em] text-gray-700">{children}</code>;
+            }
+
+            return (
+              <code className="block overflow-x-auto rounded-2xl bg-gray-900/92 px-4 py-3 text-[12px] leading-6 text-gray-100">
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }) => <pre className="my-2.5 overflow-x-auto">{children}</pre>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-emerald-600 underline decoration-emerald-300 underline-offset-4"
+            >
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 // ─── Text Generate Effect ───
@@ -235,20 +300,77 @@ function buildSummaryText(prefs: UserPreferences): string {
   const riskText = RISK_LABELS[prefs.risk];
   const enabledEvents = EVENT_OPTIONS.filter(e => prefs.pushEvents[e.id as keyof typeof prefs.pushEvents]).map(e => e.label).join('、');
 
-  return `我是您的小助手，${prefs.name}。
+  return `我是您的小助手，${getDisplayName(prefs)}。
 
 每天早上 ${prefs.morningTime}，我将发送早报给您：
 1. 复盘前一日您投注的比赛情况
 2. 当前投注盈利情况
 3. 今日关注比赛
 
-每天 ${prefs.strategyTimes[0]} 和 ${prefs.strategyTimes[1]}，我将根据您的偏好（${riskText}策略 · ${sportsText} · ${leaguesText}），分别推送今日早场、晚场投注策略。您可以和我探讨或修改，同时支持添加至您的记账本。
+每天 ${prefs.strategyTimes[0]} 和 ${prefs.strategyTimes[1]}，我将根据您的偏好（${riskText}策略 · ${sportsText || '待补充运动'} · ${leaguesText || '待补充联赛'}），分别推送今日早场、晚场投注策略。您可以和我探讨或修改，同时支持添加至您的记账本。
 
 您可以点击"帮我记账"记录您的投注。
 
-另外，您投注比赛的重点事件（${enabledEvents}），也将实时推送给您。
+另外，您投注比赛的重点事件（${enabledEvents || '暂未开启'}），也将实时推送给您。
 
 比赛结束，我将立即统计当前盈利情况告诉您。`;
+}
+
+function buildChatContext(messages: Message[]): ChatContextMessage[] {
+  return messages
+    .filter((message) => !message.isWelcome && !message.options && message.text.trim())
+    .slice(-10)
+    .map((message) => ({
+      role: message.sender,
+      content: message.text,
+    }));
+}
+
+function normalizeIntentText(value: string) {
+  return value.replace(/\s+/g, '').toLowerCase();
+}
+
+function resolveLocalAction(text: string): { reply: string; route: string } | null {
+  const normalized = normalizeIntentText(text);
+
+  if (
+    normalized.includes('帮我记账')
+    || normalized.includes('去记账')
+    || normalized.includes('开始记账')
+    || normalized.includes('记录投注')
+    || normalized.includes('记录彩票')
+  ) {
+    return {
+      reply: '已为您打开识别记账页面，请上传彩票开始拆分和计算。',
+      route: '/record-bet',
+    };
+  }
+
+  if (
+    normalized.includes('记账本')
+    || normalized.includes('账本')
+    || normalized.includes('投注记录')
+    || normalized.includes('查看记录')
+  ) {
+    return {
+      reply: '已为您打开记账页面，您可以查看已保存的彩票记录。',
+      route: '/bookkeeping',
+    };
+  }
+
+  if (
+    normalized.includes('设置')
+    || normalized.includes('偏好')
+    || normalized.includes('个人资料')
+    || normalized.includes('个人设置')
+  ) {
+    return {
+      reply: '已为您打开设置页面，您可以调整推送和偏好配置。',
+      route: '/profile',
+    };
+  }
+
+  return null;
 }
 
 // ─── Main Component ───
@@ -262,36 +384,85 @@ export default function Assistant() {
   const [multiSelections, setMultiSelections] = useState<Set<string>>(new Set());
   const [inputFocused, setInputFocused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const initializedRef = useRef(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const streamingMessageIdRef = useRef<string | null>(null);
+  const activeStreamRef = useRef<AbortController | null>(null);
+  const assistantName = getDisplayName(prefs);
+  const {
+    voiceEnabled,
+    isUnlocked,
+    isPlaying: isVoicePlaying,
+    unlock: unlockVoice,
+    reset: resetVoice,
+    setVoiceEnabled,
+    enqueueBase64Pcm,
+  } = usePcmPlayer(true);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   }, []);
 
+  const syncInputHeight = useCallback(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = '0px';
+    const nextHeight = Math.min(textarea.scrollHeight, 132);
+    textarea.style.height = `${Math.max(nextHeight, 44)}px`;
+  }, []);
+
   // ─── Initialize ───
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
+    let isActive = true;
 
-    const saved = loadPreferences();
-    setPrefs(saved);
+    (async () => {
+      const cachedPreferences = loadPreferences();
+      let initialPreferences = cachedPreferences;
 
-    if (saved.isOnboarded) {
-      setMessages([buildWelcomeMessage(saved)]);
-    } else {
+      try {
+        const remotePreferences = await fetchPreferences();
+
+        if (!remotePreferences.isOnboarded && cachedPreferences.isOnboarded) {
+          try { await persistPreferences(cachedPreferences); } catch { /* ignore sync failure */ }
+          initialPreferences = cachedPreferences;
+        } else {
+          initialPreferences = remotePreferences;
+          if (isActive) {
+            setPrefs(remotePreferences);
+            savePreferences(remotePreferences);
+          }
+        }
+      } catch {
+        if (isActive) {
+          setPrefs(cachedPreferences);
+        }
+      }
+
+      if (!isActive) return;
+
+      if (initialPreferences.isOnboarded) {
+        setOnboardStep(null);
+        setMessages([buildWelcomeMessage()]);
+        return;
+      }
+
       setOnboardStep('risk');
-      const step = getStepMessage('risk', saved);
+      const step = getStepMessage('risk', initialPreferences);
       setMessages([{
         id: 'onboard-risk',
         timestamp: new Date(),
         ...step,
       }]);
-    }
+    })();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
+  useEffect(() => { syncInputHeight(); }, [input, syncInputHeight]);
 
-  function buildWelcomeMessage(p: UserPreferences): Message {
+  function buildWelcomeMessage(): Message {
     return {
       id: 'welcome',
       text: '',
@@ -308,6 +479,32 @@ export default function Assistant() {
     return m;
   }, []);
 
+  const appendStreamingAssistantMessage = useCallback((text: string) => {
+    const existingId = streamingMessageIdRef.current;
+
+    if (!existingId) {
+      const nextId = `${Date.now()}-${Math.random()}`;
+      streamingMessageIdRef.current = nextId;
+      setMessages(prev => [...prev, {
+        id: nextId,
+        text,
+        sender: 'assistant',
+        timestamp: new Date(),
+      }]);
+      return;
+    }
+
+    setMessages(prev => prev.map((message) => (
+      message.id === existingId
+        ? { ...message, text: message.text + text }
+        : message
+    )));
+  }, []);
+
+  const clearStreamingState = useCallback(() => {
+    streamingMessageIdRef.current = null;
+  }, []);
+
   const advanceOnboarding = useCallback((currentStep: OnboardStep, updatedPrefs: UserPreferences) => {
     const idx = STEP_ORDER.indexOf(currentStep);
     const nextStep = STEP_ORDER[idx + 1];
@@ -320,12 +517,26 @@ export default function Assistant() {
 
       setIsTyping(true);
       setTimeout(() => {
-        setIsTyping(false);
-        addMessage({
-          sender: 'assistant',
-          text: buildSummaryText(finalPrefs),
-          isSummary: true,
-        });
+        void (async () => {
+          try {
+            const persistedPreferences = await persistPreferences(finalPrefs);
+            setPrefs(persistedPreferences);
+            savePreferences(persistedPreferences);
+            addMessage({
+              sender: 'assistant',
+              text: buildSummaryText(persistedPreferences),
+              isSummary: true,
+            });
+          } catch {
+            addMessage({
+              sender: 'assistant',
+              text: '定制已完成，但同步后端失败了。您可以稍后在设置页重新保存一次。',
+              isSummary: true,
+            });
+          } finally {
+            setIsTyping(false);
+          }
+        })();
       }, 1200);
       return;
     }
@@ -345,7 +556,13 @@ export default function Assistant() {
 
     addMessage({ sender: 'user', text: option.label });
 
-    let updated = { ...prefs };
+    let updated: UserPreferences = {
+      ...prefs,
+      sports: [...prefs.sports],
+      leagues: [...prefs.leagues],
+      strategyTimes: [...prefs.strategyTimes] as UserPreferences['strategyTimes'],
+      pushEvents: { ...prefs.pushEvents },
+    };
 
     switch (stepKey) {
       case 'risk':
@@ -380,11 +597,17 @@ export default function Assistant() {
     });
     addMessage({ sender: 'user', text: selectedLabels.join('、') });
 
-    let updated = { ...prefs };
+    let updated: UserPreferences = {
+      ...prefs,
+      sports: [...prefs.sports],
+      leagues: [...prefs.leagues],
+      strategyTimes: [...prefs.strategyTimes] as UserPreferences['strategyTimes'],
+      pushEvents: { ...prefs.pushEvents },
+    };
 
     switch (stepKey) {
       case 'sports':
-        updated.sports = Array.from(multiSelections);
+        updated.sports = Array.from(multiSelections) as UserPreferences['sports'];
         break;
       case 'leagues':
         updated.leagues = Array.from(multiSelections);
@@ -403,38 +626,113 @@ export default function Assistant() {
     advanceOnboarding(onboardStep, updated);
   }, [onboardStep, prefs, multiSelections, addMessage, advanceOnboarding]);
 
-  const handleSend = (textInput?: string) => {
-    const textToSend = typeof textInput === 'string' ? textInput : input;
-    if (!textToSend.trim()) return;
+  const handleSend = async (textInput?: string) => {
+    const textToSend = (typeof textInput === 'string' ? textInput : input).trim();
+    if (!textToSend) return;
 
+    activeStreamRef.current?.abort();
+    activeStreamRef.current = null;
+    clearStreamingState();
+    resetVoice();
+
+    const context = buildChatContext(messages);
+    const localAction = resolveLocalAction(textToSend);
     addMessage({ sender: 'user', text: textToSend });
     setInput('');
+
+    if (localAction) {
+      addMessage({ sender: 'assistant', text: localAction.reply });
+      setTimeout(() => navigate(localAction.route), 400);
+      return;
+    }
+
     setIsTyping(true);
 
-    setTimeout(() => {
-      setIsTyping(false);
-      let responseText = '收到您的指令，正在处理...';
+    const controller = new AbortController();
+    activeStreamRef.current = controller;
+    let hasDelta = false;
 
-      if (textToSend.includes('记账') || textToSend.includes('添加')) {
-        responseText = '没问题，正在为您打开记账本...';
-        setTimeout(() => navigate('/bookkeeping'), 1000);
-      } else if (textToSend.includes('定制') || textToSend.includes('偏好') || textToSend.includes('设置')) {
-        responseText = '好的，即将带您前往偏好设置中心...';
-        setTimeout(() => navigate('/profile'), 1000);
-      } else if (textToSend.includes('阿森纳') || textToSend.includes('胜率')) {
-        responseText = `根据 Foretell 数据模型分析：\n\n今晚阿森纳对阵曼城的比赛，主队不败概率为 62.4%。\n\n核心数据：\n- 曼城核心罗德里因伤缺阵\n- 阿森纳近期主场 5 连胜\n\n建议关注【胜平负-主胜】或【让球-主+1】。`;
-      } else if (textToSend.includes('小绿') || textToSend.includes(prefs.name)) {
-        responseText = `${prefs.name}在呢！有什么可以帮您？您可以直接问我赛前分析，或者让我帮您记录投注。`;
+    try {
+      if (voiceEnabled) {
+        await unlockVoice();
       }
 
-      addMessage({ sender: 'assistant', text: responseText });
-    }, 1500);
+      await streamChatMessage(
+        {
+          message: textToSend,
+          context,
+          voice: {
+            enabled: voiceEnabled,
+            mode: voiceEnabled ? 'assistant' : 'off',
+          },
+        },
+        {
+          onDelta: (text) => {
+            hasDelta = true;
+            setIsTyping(false);
+            appendStreamingAssistantMessage(text);
+          },
+          onAudioDelta: async ({ data, sampleRate }) => {
+            await enqueueBase64Pcm(data, sampleRate);
+          },
+          onDone: ({ reply, action }) => {
+            setIsTyping(false);
+
+            if (!hasDelta && reply.trim()) {
+              addMessage({ sender: 'assistant', text: reply });
+            }
+
+            clearStreamingState();
+            const targetRoute = mapChatActionToRoute(action);
+            if (targetRoute) {
+              setTimeout(() => navigate(targetRoute), 1000);
+            }
+          },
+          onAudioError: () => {
+            resetVoice();
+          },
+          onError: (message) => {
+            if (controller.signal.aborted) {
+              return;
+            }
+
+            setIsTyping(false);
+            clearStreamingState();
+            addMessage({
+              sender: 'assistant',
+              text: `暂时无法连接助手服务：${message}`,
+            });
+          },
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      setIsTyping(false);
+      const message = error instanceof Error ? error.message : '服务暂时不可用';
+      addMessage({
+        sender: 'assistant',
+        text: `暂时无法连接助手服务：${message}`,
+      });
+    } finally {
+      if (activeStreamRef.current === controller) {
+        activeStreamRef.current = null;
+      }
+    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  useEffect(() => () => {
+    activeStreamRef.current?.abort();
+    resetVoice();
+  }, [resetVoice]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -467,16 +765,28 @@ export default function Assistant() {
             </div>
           </div>
           <div>
-            <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight leading-tight">{prefs.name}</h1>
+            <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight leading-tight">{assistantName}</h1>
             <p className="text-[10px] text-gray-300 font-medium tracking-[0.08em]">Foretell Intelligence</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate('/profile')}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
-        >
-          <Settings size={17} strokeWidth={1.8} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void setVoiceEnabled(!voiceEnabled)}
+            className={cn(
+              'h-9 px-3 flex items-center gap-1.5 rounded-full backdrop-blur-xl border transition-colors',
+              voiceEnabled
+                ? 'bg-white/60 border-white/30 text-emerald-600'
+                : 'bg-white/50 border-white/30 text-gray-400'
+            )}
+            title={voiceEnabled ? '关闭语音播报' : '开启语音播报'}
+          >
+            {voiceEnabled ? <Volume2 size={15} strokeWidth={1.9} /> : <VolumeX size={15} strokeWidth={1.9} />}
+            <span className="text-[11px] font-medium tracking-[0.06em]">
+              {isVoicePlaying ? '播报中' : voiceEnabled ? (isUnlocked ? '语音开' : '点按启用') : '语音关'}
+            </span>
+          </button>
+
+        </div>
       </header>
 
       {/* ═══ Chat Area ═══ */}
@@ -488,12 +798,17 @@ export default function Assistant() {
               initial={{ opacity: 0, y: 14, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={cn(
+                'flex',
+                msg.sender === 'user'
+                  ? 'justify-end'
+                  : 'flex-col items-start justify-start gap-2'
+              )}
             >
               {/* Assistant Avatar */}
               {msg.sender === 'assistant' && !msg.isWelcome && (
                 <div
-                  className="w-7 h-7 rounded-lg bg-white/60 backdrop-blur-xl border border-white/30 flex-shrink-0 flex items-center justify-center mr-2.5 mt-1"
+                  className="w-7 h-7 rounded-lg bg-white/60 backdrop-blur-xl border border-white/30 flex items-center justify-center ml-1"
                 >
                   <Sparkles size={13} strokeWidth={2} className="text-emerald-500" />
                 </div>
@@ -509,7 +824,7 @@ export default function Assistant() {
                     className="mb-5 px-1"
                   >
                     <TextGenerateEffect
-                      text={`我是您的小助手，${prefs.name}`}
+                      text={`我是您的小助手，${assistantName}`}
                       className="text-[20px] font-normal text-gray-800 tracking-tight"
                       delay={0.3}
                     />
@@ -528,7 +843,7 @@ export default function Assistant() {
                         <GlowingIcon icon={BarChart3} color="text-blue-500" glowColor="rgba(59,130,246,0.1)" />
                         <div className="flex-1 min-w-0">
                           <h3 className="text-[14px] font-semibold text-gray-800 tracking-tight">每日早报</h3>
-                          <p className="text-[11px] text-gray-400 font-normal mt-1.5 leading-[1.7] tracking-wide">
+                          <p className="text-[11px] text-gray-500 font-normal mt-1.5 leading-[1.7] tracking-wide">
                             每天 {prefs.morningTime} 准时送达
                           </p>
                           {/* TextReveal preview */}
@@ -560,7 +875,7 @@ export default function Assistant() {
                     >
                       <GlowingIcon icon={Zap} color="text-amber-500" glowColor="rgba(245,158,11,0.1)" />
                       <h3 className="text-[13px] font-semibold text-gray-800 tracking-tight mt-3">早晚盘策略</h3>
-                      <p className="text-[10px] text-gray-400/70 font-normal mt-1 leading-[1.6] tracking-wide">
+                      <p className="text-[10px] text-gray-500/70 font-normal mt-1 leading-[1.6] tracking-wide">
                         {prefs.strategyTimes[0]} & {prefs.strategyTimes[1]}
                       </p>
                       <div className="mt-2.5 text-[10px] text-gray-300 tracking-widest">
@@ -577,7 +892,7 @@ export default function Assistant() {
                     >
                       <GlowingIcon icon={ShieldCheck} color="text-rose-400" glowColor="rgba(244,63,94,0.08)" />
                       <h3 className="text-[13px] font-semibold text-gray-800 tracking-tight mt-3">赛况监控</h3>
-                      <p className="text-[10px] text-gray-400/70 font-normal mt-1 leading-[1.6] tracking-wide">
+                      <p className="text-[10px] text-gray-500/70 font-normal mt-1 leading-[1.6] tracking-wide">
                         进球 · 红牌 · 结算
                       </p>
                       <div className="mt-2.5 text-[10px] text-gray-300 tracking-widest">
@@ -602,7 +917,7 @@ export default function Assistant() {
                     </MagneticButton>
 
                     <HoverBorderGradient
-                      onClick={() => handleSend('分析今晚阿森纳胜率')}
+                      onClick={() => handleSend(DEFAULT_MATCH_ANALYSIS_PROMPT)}
                     >
                       <div className="flex items-center gap-1.5 px-4 py-2.5">
                         <Sparkles size={14} className="text-emerald-500" strokeWidth={2} />
@@ -613,7 +928,7 @@ export default function Assistant() {
                 </div>
               ) : msg.isSummary && !msg.isWelcome ? (
                 /* ═══ Summary Report — Frosted Glass ═══ */
-                <div className="max-w-[90%]">
+                <div className="max-w-[94%]">
                   <div className="rounded-3xl rounded-tl-lg bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 p-5 shadow-[0_2px_20px_rgba(0,0,0,0.02)] dot-matrix">
                     <div className="flex items-center gap-2.5 mb-4">
                       <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
@@ -621,7 +936,7 @@ export default function Assistant() {
                       </div>
                       <span className="text-[12px] font-semibold text-gray-500 tracking-wide">定制完成</span>
                     </div>
-                    <div className="whitespace-pre-wrap text-[13px] leading-[1.9] text-gray-600 font-normal tracking-wide">{msg.text}</div>
+                    <MarkdownMessage text={msg.text} />
                   </div>
 
                   {/* Post-summary actions */}
@@ -634,7 +949,7 @@ export default function Assistant() {
                       <span className="text-[13px] font-medium text-gray-700 tracking-tight">帮我记账</span>
                     </MagneticButton>
 
-                    <HoverBorderGradient onClick={() => handleSend('分析今晚阿森纳胜率')}>
+                    <HoverBorderGradient onClick={() => handleSend(DEFAULT_MATCH_ANALYSIS_PROMPT)}>
                       <div className="flex items-center gap-1.5 px-4 py-2.5">
                         <Sparkles size={14} className="text-emerald-500" strokeWidth={2} />
                         <span className="text-[13px] font-medium text-gray-700 tracking-tight">分析今晚焦点战</span>
@@ -644,16 +959,20 @@ export default function Assistant() {
                 </div>
               ) : (
                 /* ═══ Regular Chat Bubbles — Frosted ═══ */
-                <div className="max-w-[85%]">
+                <div className={cn(msg.sender === 'assistant' ? 'w-full max-w-[94%]' : 'w-fit max-w-[85%]')}>
                   <div
                     className={cn(
                       'px-4 py-3',
                       msg.sender === 'user'
-                        ? 'bg-gray-900/90 backdrop-blur-xl text-white rounded-2xl rounded-tr-lg shadow-[0_4px_20px_rgba(0,0,0,0.08)]'
+                        ? 'inline-flex max-w-full bg-gray-900/90 backdrop-blur-xl text-white rounded-2xl rounded-tr-lg shadow-[0_4px_20px_rgba(0,0,0,0.08)]'
                         : 'bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 text-gray-700 rounded-2xl rounded-tl-lg shadow-[0_2px_16px_rgba(0,0,0,0.02)]'
                     )}
                   >
-                    <div className="whitespace-pre-wrap text-[13px] leading-[1.8] tracking-wide font-normal">{msg.text}</div>
+                    {msg.sender === 'assistant' ? (
+                      <MarkdownMessage text={msg.text} className="text-gray-700" />
+                    ) : (
+                      <div className="whitespace-pre-wrap break-words text-[13px] leading-[1.8] tracking-wide font-normal">{msg.text}</div>
+                    )}
                   </div>
 
                   {/* ═══ Onboarding Options — Glassmorphism ═══ */}
@@ -671,7 +990,7 @@ export default function Assistant() {
                             </div>
                             <div>
                               <div className="text-[13px] font-medium text-gray-700 tracking-tight">{opt.label}</div>
-                              {opt.desc && <div className="text-[10px] text-gray-400/70 font-normal mt-0.5 tracking-wide">{opt.desc}</div>}
+                              {opt.desc && <div className="text-[10px] text-gray-500/70 font-normal mt-0.5 tracking-wide">{opt.desc}</div>}
                             </div>
                           </button>
                         ))
@@ -731,9 +1050,9 @@ export default function Assistant() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="flex justify-start mt-2"
+              className="flex flex-col items-start justify-start gap-2 mt-2"
             >
-              <div className="w-7 h-7 rounded-lg bg-white/60 backdrop-blur-xl border border-white/30 flex-shrink-0 flex items-center justify-center mr-2.5 mt-1">
+              <div className="w-7 h-7 rounded-lg bg-white/60 backdrop-blur-xl border border-white/30 flex items-center justify-center ml-1">
                 <Sparkles size={13} strokeWidth={2} className="text-emerald-500" />
               </div>
               <div className="bg-white/50 backdrop-blur-[40px] border-[0.5px] border-white/40 px-4 py-3.5 rounded-2xl rounded-tl-lg flex items-center gap-2 h-10 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
@@ -757,7 +1076,7 @@ export default function Assistant() {
           }}
           transition={{ duration: 0.4 }}
           className={cn(
-            'relative flex items-center rounded-[22px] pl-5 pr-1.5 py-1.5 bg-white/60 backdrop-blur-2xl border transition-all duration-500',
+            'relative flex items-end rounded-[22px] pl-5 pr-1.5 py-1.5 bg-white/60 backdrop-blur-2xl border transition-all duration-500',
             inputFocused
               ? 'border-emerald-500/15'
               : 'border-white/40'
@@ -774,23 +1093,24 @@ export default function Assistant() {
             />
           )}
 
-          <input
-            type="text"
+          <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
-            placeholder={onboardStep ? '请通过上方选项完成定制...' : `问${prefs.name}任何问题...`}
+            placeholder={onboardStep ? '请通过上方选项完成定制...' : `问${assistantName}任何问题...`}
             disabled={!!onboardStep}
-            className="flex-1 bg-transparent outline-none text-[14px] font-normal text-gray-800 placeholder:text-gray-300 py-2.5 disabled:opacity-40 tracking-wide"
+            rows={1}
+            className="max-h-[132px] min-h-[44px] flex-1 resize-none overflow-y-auto bg-transparent py-2.5 text-[14px] font-normal leading-6 text-gray-800 outline-none placeholder:text-gray-300 disabled:opacity-40 tracking-wide"
           />
           <motion.button
-            onClick={() => handleSend()}
+            onClick={() => void handleSend()}
             disabled={!input.trim() || !!onboardStep}
             whileTap={{ scale: 0.92 }}
             className={cn(
-              'ml-2 w-9 h-9 rounded-[14px] transition-all duration-500 flex items-center justify-center',
+              'mb-0.5 ml-2 w-9 h-9 shrink-0 rounded-[14px] transition-all duration-500 flex items-center justify-center',
               input.trim() && !onboardStep
                 ? 'bg-gray-900/90 text-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]'
                 : 'bg-gray-100/40 text-gray-300'

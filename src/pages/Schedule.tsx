@@ -165,13 +165,13 @@ function DaySegmentedControl({
         >
           <span className={cn(
             'text-[13px] font-medium tracking-[0.06em] transition-colors duration-300',
-            activeDay === day ? 'text-gray-900' : 'text-gray-400'
+            activeDay === day ? 'text-gray-900' : 'text-gray-500'
           )}>
             {dayLabels[day]}
           </span>
           <span className={cn(
             'text-[10px] font-medium tracking-[0.08em] transition-colors duration-300 mt-0.5 mono-time',
-            activeDay === day ? 'text-gray-400' : 'text-gray-300/60'
+            activeDay === day ? 'text-gray-500' : 'text-gray-300/60'
           )}>
             {dayDates[day]}
           </span>
@@ -212,7 +212,7 @@ function HeroLiveCard({ match, onClick }: { match: Match; onClick: () => void })
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <LeagueIcon league={match.league} size={13} active />
-            <span className="text-[11px] font-medium text-gray-400 tracking-[0.06em]">{match.league}</span>
+            <span className="text-[11px] font-medium text-gray-500 tracking-[0.06em]">{match.league}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="relative flex h-2 w-2 live-pulse">
@@ -242,14 +242,14 @@ function HeroLiveCard({ match, onClick }: { match: Match; onClick: () => void })
             <div className="flex items-center gap-3">
               <span className={cn(
                 'text-[32px] font-black tabular-nums tracking-tighter',
-                homeWin ? 'text-gray-900' : 'text-gray-400'
+                homeWin ? 'text-gray-900' : 'text-gray-500'
               )}>
                 {match.homeScore}
               </span>
               <span className="text-[14px] font-normal text-gray-200">:</span>
               <span className={cn(
                 'text-[32px] font-black tabular-nums tracking-tighter',
-                awayWin ? 'text-gray-900' : 'text-gray-400'
+                awayWin ? 'text-gray-900' : 'text-gray-500'
               )}>
                 {match.awayScore}
               </span>
@@ -488,7 +488,7 @@ export default function Schedule() {
           </div>
           <button
             onClick={() => navigate('/profile')}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-400 hover:text-gray-700 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/50 backdrop-blur-xl border border-white/30 text-gray-500 hover:text-gray-700 transition-colors"
           >
             <Settings size={17} strokeWidth={1.8} />
           </button>
@@ -519,7 +519,7 @@ export default function Schedule() {
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all duration-400 border-[0.5px]',
                   isActive
                     ? 'bg-white/70 backdrop-blur-xl border-white/40 text-gray-800 shadow-[0_2px_10px_rgba(0,0,0,0.03)]'
-                    : 'bg-transparent border-transparent text-gray-400 hover:text-gray-600'
+                    : 'bg-transparent border-transparent text-gray-500 hover:text-gray-600'
                 )}
               >
                 {l.key !== 'all' && <LeagueIcon league={l.label} size={11} active={isActive} />}
